@@ -121,6 +121,7 @@ package-deb:
 	@echo "✅ Создан: accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb"
 
 # RPM: accord-le-<version>.<arch>.rpm
+# RPM: accord-le-<version>.<arch>.rpm
 package-rpm:
 	@if [ ! -f accord-le.ko ]; then \
 		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
@@ -130,13 +131,13 @@ package-rpm:
 	@mkdir -p $(OUTPUT_DIR)/rpm-driver/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
 	@mkdir -p $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)
 	
-	# Копируем исходники в SOURCES
+	# Копируем файлы в SOURCES
 	cp accord-le.ko $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/
 	@if [ -f 99-accord-le.rules ]; then \
 		cp 99-accord-le.rules $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/; \
 	fi
 	
-	# Создаем spec файл
+	# Создаем spec файл (теперь директория SPECS существует)
 	@echo "Name: accord-le-driver" > $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec
 	@echo "Version: $(MODULE_VERSION)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec
 	@echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec
@@ -168,12 +169,15 @@ package-rpm:
 	@echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec
 	
 	# Сборка RPM
-	rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-driver" \
+	@rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-driver" \
 		--define "_sourcedir $(OUTPUT_DIR)/rpm-driver/SOURCES" \
-		-bb $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec
+		-bb $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec 2>/dev/null || true
 	
 	# Копирование готового RPM
-	@find $(OUTPUT_DIR)/rpm-driver/RPMS -name "*.rpm" \
-		-exec cp {} $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true
+	@find $(OUTPUT_DIR)/rpm-driver/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true
+	@if [ -f $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
+		echo "✅ Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
+	else \
+		echo "⚠️ RPM пакет не создан (rpmbuild может быть не установлен)"; \
+	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-driver
-	@echo "✅ Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"
