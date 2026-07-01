@@ -169,9 +169,8 @@ package-rpm:
 	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "%files" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "/usr/bin/acle-*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "/usr/bin/convert_*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "/usr/share/acle-tools/*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	
+		
 	@if command -v rpmbuild >/dev/null 2>&1; then \
 		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-tools" \
 			--define "_sourcedir $(OUTPUT_DIR)/rpm-tools/SOURCES" \
