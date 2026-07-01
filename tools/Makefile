@@ -8,15 +8,17 @@ BUILD_NUM      ?= 1
 TARGET_ARCH    ?= $(shell uname -m)
 OUTPUT_DIR     ?= $(CURDIR)/../build
 
+# RPM версия (без дефисов)
+RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
+
 CFLAGS = -Wall -g
 
-# Список утилит (исправлены названия)
+# Список утилит
 ACLE_TOOLS = acle-buf0 acle-disable-watchdog acle-get-random acle-get-state \
              acle-get-tmid acle-login acle-logout acle-sd acle-set-rng \
              acle-test-random-generator acle-write-sectors acle-get-rtc \
              acle-set-rtc acle-set-sdc-mode
 
-# Только существующие утилиты (convert_hd_serial удален)
 CONVERT_TOOLS = convert_icl
 
 .PHONY: all clean install uninstall package package-tar package-deb package-rpm test
@@ -134,31 +136,53 @@ package-deb:
 # RPM: acle-tools-<version>.<arch>.rpm
 package-rpm:
 	@rm -rf $(OUTPUT_DIR)/rpm-tools
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/BUILDROOT/acle-tools-$(MODULE_VERSION)/usr/bin
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/BUILDROOT/acle-tools-$(MODULE_VERSION)/usr/share/acle-tools/scripts
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/BUILD
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/RPMS
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SOURCES
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SPECS
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SRPMS
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/BUILDROOT
+	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)
+	
 	@for tool in $(ACLE_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/rpm-tools/BUILDROOT/acle-tools-$(MODULE_VERSION)/usr/bin/; fi; \
+		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
-	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/rpm-tools/BUILDROOT/acle-tools-$(MODULE_VERSION)/usr/bin/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/rpm-tools/BUILDROOT/acle-tools-$(MODULE_VERSION)/usr/share/acle-tools/scripts/ 2>/dev/null || true
+	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi
+	@cp scripts/*.sh $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/ 2>/dev/null || true
+	
 	@echo "Name: acle-tools" > $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Version: $(MODULE_VERSION)" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Release: $(BUILD_NUM)" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "Version: $(RPM_VERSION)" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "Summary: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "License: Proprietary" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "Requires: zlib, perl" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "%description" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "Utilities for AMDZ GX" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "%install" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp -r $(OUTPUT_DIR)/rpm-tools/BUILDROOT/acle-tools-$(MODULE_VERSION)/usr %{buildroot}/" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "mkdir -p %{buildroot}/usr/bin" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "mkdir -p %{buildroot}/usr/share/acle-tools/scripts" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/acle-* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/convert_* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "cp -r %{_sourcedir}/acle-tools-$(MODULE_VERSION)/scripts/* %{buildroot}/usr/share/acle-tools/scripts/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "%files" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "/usr/bin/*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "/usr/bin/acle-*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "/usr/bin/convert_*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "/usr/share/acle-tools/*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-tools" \
-		--define "_buildrootdir $(OUTPUT_DIR)/rpm-tools/BUILDROOT" \
-		-bb $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@find $(OUTPUT_DIR)/rpm-tools/RPMS -name "*.rpm" \
-		-exec cp {} $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true
+	
+	@if command -v rpmbuild >/dev/null 2>&1; then \
+		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-tools" \
+			--define "_sourcedir $(OUTPUT_DIR)/rpm-tools/SOURCES" \
+			-bb $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec; \
+		find $(OUTPUT_DIR)/rpm-tools/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
+		if [ -f $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
+			echo "✅ Создан: acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
+		else \
+			echo "⚠️ RPM пакет не найден"; \
+		fi \
+	else \
+		echo "⚠️ rpmbuild не установлен. Пропускаем RPM."; \
+	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-tools
-	@echo "✅ Создан: acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm"
