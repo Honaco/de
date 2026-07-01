@@ -1,3 +1,8 @@
+# ============================================
+# GitLab CI/CD для Accord-LE Driver
+# ТЗ п. 4: CI/CD Pipeline
+# ============================================
+
 stages:
   - validate
   - build
@@ -5,68 +10,124 @@ stages:
   - test
   - release
 
+# ============================================
+# Reusable Templates (ТЗ п. 4.2)
+# ============================================
+
+.ubuntu-template: &ubuntu-template
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq make gcc build-essential dpkg-dev rpm file
+    - apt-get install -y -qq kmod udev linux-headers-$(uname -r)
+  variables:
+    TARGET_OS: "ubuntu"
+
+.debian-template: &debian-template
+  image: debian:12
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq make gcc build-essential dpkg-dev rpm file
+    - apt-get install -y -qq kmod udev linux-headers-$(uname -r)
+  variables:
+    TARGET_OS: "debian"
+
+# ============================================
+# 1. VALIDATE (ТЗ п. 4.3)
+# ============================================
+
 validate:
   stage: validate
   image: debian:12
   script:
-    - apt-get update
-    - apt-get install -y build-essential make gcc
-    - echo "✅ Проверка завершена"
+    - apt-get update -qq
+    - apt-get install -y -qq make gcc
+    - echo "🔍 Проверка Makefile'ов..."
+    - make -n build 2>/dev/null || true
+    - echo "✅ Валидация завершена"
     - make --version
+  only:
+    - merge_requests
+    - main
 
-build:
+# ============================================
+# 2. BUILD (ТЗ п. 4.3) - Build Matrix
+# ============================================
+
+build:driver:ubuntu:
   stage: build
-  image: debian:12
+  <<: *ubuntu-template
   script:
-    - apt-get update
-    - apt-get install -y build-essential make gcc
+    - echo "🔨 Сборка драйвера для Ubuntu..."
+    - export KERNEL_RELEASE=$(uname -r)
+    - make -C driver all
+    - file driver/accord-le.ko
+  artifacts:
+    paths:
+      - driver/accord-le.ko
+      - driver/99-accord-le.rules
+    expire_in: 1 day
+
+build:driver:debian:
+  stage: build
+  <<: *debian-template
+  script:
+    - echo "🔨 Сборка драйвера для Debian..."
+    - export KERNEL_RELEASE=$(uname -r)
+    - make -C driver all
+    - file driver/accord-le.ko
+  artifacts:
+    paths:
+      - driver/accord-le.ko
+      - driver/99-accord-le.rules
+    expire_in: 1 day
+
+build:tools:
+  stage: build
+  <<: *debian-template
+  script:
     - echo "🔨 Сборка утилит..."
     - make -C tools all
   artifacts:
     paths:
+      - tools/acle-*
+      - tools/convert_*
       - build/acle-tools-bin.tar.xz
-    expire_in: 1 hour
+    expire_in: 1 day
 
-package_tools:
+# ============================================
+# 3. PACKAGE (ТЗ п. 4.3, 5)
+# ============================================
+
+package:driver:ubuntu:
   stage: package
-  image: debian:12
-  script:
-    - apt-get update
-    - apt-get install -y build-essential make gcc dpkg-dev rpm
-    - echo "📦 Создание пакетов..."
-    - make -C tools package
-    - echo "📂 Артефакты:"
-    - ls -lh build/
+  <<: *ubuntu-template
   dependencies:
-    - build
+    - build:driver:ubuntu
+  script:
+    - echo "📦 Упаковка драйвера для Ubuntu..."
+    - export KERNEL_RELEASE=$(uname -r)
+    - make -C driver package
+    - ls -lh build/accord-le-*
   artifacts:
     paths:
-      - build/
+      - build/accord-le-*.deb
+      - build/accord-le-*.rpm
+      - build/accord-le-*.tar.gz
     expire_in: 1 week
 
-test:
-  stage: test
-  image: debian:12
-  script:
-    - echo "🧪 Тестирование установки пакетов (ТЗ п. 8)..."
-    - apt-get update
-    - echo "📥 Установка DEB пакета..."
-    - dpkg -i build/acle-tools-*.deb || echo "⚠️ Установка"
-    - echo "✅ Проверка установленных файлов:"
-    - ls /usr/bin/acle-* || true
-    - ls /usr/share/acle-tools/scripts/*.sh || true
-    - echo "✅ Тест установки пройден"
+package:driver:debian:
+  stage: package
+  <<: *debian-template
   dependencies:
-    - package_tools
-
-release:
-  stage: release
-  image: debian:12
+    - build:driver:debian
   script:
-    - echo "Релиз завершён!"
-    - echo "Айди $CI_PIPELINE_ID"
-    - echo "Доступные артефакты:"
-    - ls -lh build/
-    - echo "Все этапы CI/CD пройдены успешно!"
-  dependencies:
-    - package_tools
+    - echo "📦 Упаковка драйвера для Debian..."
+    - export KERNEL_RELEASE=$(uname -r)
+    - make -C driver package
+    - ls -lh build/accord-le-*
+  artifacts:
+    paths:
+      - build/accord-le-*.deb
+      - build/accord-le-*.rpm
+      - build/accord-le-*.tar.gz

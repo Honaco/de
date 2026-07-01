@@ -1,5 +1,7 @@
-# Корневой Makefile
-# ТЗ п. 3.3: Параметры сборки
+# ==========================================
+# Корневой Makefile Accord-LE
+# ТЗ п. 3.2, 3.3, 6.1, 7
+# ==========================================
 
 KERNEL_RELEASE ?= $(shell uname -r)
 KERNEL_HEADERS ?= /lib/modules/$(KERNEL_RELEASE)/build
@@ -28,7 +30,7 @@ export TARGET_OS TARGET_ARCH OUTPUT_DIR
 # Цели (ТЗ п. 3.2)
 # ==========================================
 
-.PHONY: all build clean install uninstall package test driver tools help
+.PHONY: all build clean install uninstall package test driver tools help ci-build ci-package ci-test
 
 all: build
 
@@ -42,12 +44,12 @@ driver:
 	$(MAKE) -C driver all
 
 tools:
-	@echo " Сборка утилит..."
+	@echo "🔧 Сборка утилит..."
 	@mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C tools all
 
 clean:
-	@echo " Очистка..."
+	@echo "🧹 Очистка..."
 	$(MAKE) -C driver clean
 	$(MAKE) -C tools clean
 	rm -rf $(OUTPUT_DIR)
@@ -63,7 +65,7 @@ uninstall:
 	$(MAKE) -C tools uninstall
 
 package:
-	@echo " Упаковка..."
+	@echo "📦 Упаковка..."
 	@mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver package
 	$(MAKE) -C tools package
@@ -72,6 +74,23 @@ package:
 
 test:
 	@echo "🧪 Тестирование..."
+	$(MAKE) -C driver test
+	$(MAKE) -C tools test
+
+# ===== CI цели =====
+ci-build:
+	@echo "🔨 CI сборка..."
+	@mkdir -p $(OUTPUT_DIR)
+	$(MAKE) -C driver all
+	$(MAKE) -C tools all
+
+ci-package:
+	@echo "📦 CI упаковка..."
+	$(MAKE) -C driver package
+	$(MAKE) -C tools package
+
+ci-test:
+	@echo "🧪 CI тестирование..."
 	$(MAKE) -C driver test
 	$(MAKE) -C tools test
 
@@ -85,6 +104,11 @@ help:
 	@echo "  uninstall  - Удалить из системы"
 	@echo "  package    - Создать пакеты (DEB, RPM, tar.gz)"
 	@echo "  test       - Запустить тесты"
+	@echo ""
+	@echo "CI цели:"
+	@echo "  ci-build   - Сборка для CI"
+	@echo "  ci-package - Упаковка для CI"
+	@echo "  ci-test    - Тестирование для CI"
 	@echo ""
 	@echo "Параметры:"
 	@echo "  KERNEL_HEADERS=/path  - Путь к заголовкам ядра"
