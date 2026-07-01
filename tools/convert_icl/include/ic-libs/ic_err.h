@@ -1,0 +1,22 @@
+
+#ifndef __IC_LIBS__IC_ERR
+#define __IC_LIBS__IC_ERR
+
+/** Коды ошибок. */
+enum {
+	IC_OK = 0,
+	IC_ERR_UNDEF,
+	IC_ERR_PARAM,
+	IC_ERR_NO_MEM,
+	IC_ERR_NOT_FOUND,
+	IC_ERR_INVALID_FORMAT,
+	IC_ERR_NOT_IMPL,
+	IC_ERR_NO_ENT,
+	IC_ERR_TIMED_OUT,
+	IC_ERR_BUSY,
+	IC_ERR_EXIST,
+	IC_ERR_LOOP,
+	IC_ERR_NAMETOOLONG
+};
+
+#endif /* __IC_LIBS__IC_ERR */

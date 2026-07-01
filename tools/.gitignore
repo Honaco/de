@@ -1,0 +1,10 @@
+# Файлы без суффиксов - артефакты сборки
+# "It is not possible to re-include a file if a parent directory of that file is excluded"
+*
+!/**/
+!*.*
+!Makefile
+# байт единиц, исп. в scripts
+!FF
+# Файлы сборки
+*.o

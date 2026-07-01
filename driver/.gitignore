@@ -1,0 +1,8 @@
+*.o
+*.ko
+Module.*
+modules.order
+accord-le.mod.c
+*.cmd
+.tmp_versions
+*.mod
