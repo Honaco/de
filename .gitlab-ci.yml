@@ -27,10 +27,10 @@ variables:
   stage: build
   image: debian:12
   before_script:
+    - apt update
+    - apt install -y git build-essential make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - apt update
-    - apt install -y build-essential linux-headers-$(uname -r) make
   script:
     - make ci-build MODULE_VERSION=${MODULE_VERSION:-1.0.0} BUILD_NUM=$BUILD_NUM
   artifacts:
@@ -43,10 +43,9 @@ variables:
   stage: build
   image: rockylinux:9
   before_script:
+    - dnf install -y epel-release git make gcc
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - dnf install -y epel-release
-    - dnf install -y make gcc kernel-headers kernel-devel
   script:
     - make ci-build MODULE_VERSION=${MODULE_VERSION:-1.0.0} BUILD_NUM=$BUILD_NUM
   artifacts:
@@ -59,6 +58,8 @@ variables:
   stage: package
   image: debian:12
   before_script:
+    - apt update
+    - apt install -y git dpkg-dev make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
@@ -74,9 +75,9 @@ variables:
   stage: package
   image: rockylinux:9
   before_script:
+    - dnf install -y epel-release git rpm-build make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - dnf install -y rpm-build
   script:
     - make ci-package MODULE_VERSION=${MODULE_VERSION:-1.0.0} BUILD_NUM=$BUILD_NUM
   artifacts:
@@ -90,13 +91,13 @@ variables:
   stage: test
   image: debian:12
   before_script:
+    - apt update
+    - apt install -y git make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
     - make ci-test MODULE_VERSION=${MODULE_VERSION:-1.0.0} BUILD_NUM=$BUILD_NUM
   artifacts:
-    reports:
-      junit: build/test-results/*.xml
     paths:
       - build/logs/
     expire_in: 1 week
@@ -108,9 +109,10 @@ variables:
 validate-config:
   stage: validate
   image: alpine:latest
+  before_script:
+    - apk add --no-cache git make
   script:
     - echo "🔍 Валидация конфигурации..."
-    - apk add --no-cache git make
     - make help
     - echo "✅ Конфигурация валидна"
 
@@ -125,10 +127,10 @@ build-ubuntu-20.04:
   variables:
     DISTRO: "ubuntu-20.04"
   before_script:
+    - apt update
+    - apt install -y git build-essential make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - apt update
-    - apt install -y build-essential linux-headers-generic make
 
 build-ubuntu-22.04:
   extends: .build-deb-template
@@ -136,10 +138,10 @@ build-ubuntu-22.04:
   variables:
     DISTRO: "ubuntu-22.04"
   before_script:
+    - apt update
+    - apt install -y git build-essential make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - apt update
-    - apt install -y build-essential linux-headers-generic make
 
 build-debian-11:
   extends: .build-deb-template
@@ -147,10 +149,10 @@ build-debian-11:
   variables:
     DISTRO: "debian-11"
   before_script:
+    - apt update
+    - apt install -y git build-essential make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - apt update
-    - apt install -y build-essential linux-headers-amd64 make
 
 build-debian-12:
   extends: .build-deb-template
@@ -158,10 +160,10 @@ build-debian-12:
   variables:
     DISTRO: "debian-12"
   before_script:
+    - apt update
+    - apt install -y git build-essential make
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - apt update
-    - apt install -y build-essential linux-headers-amd64 make
 
 # ===== RPM платформы =====
 build-alt-linux:
@@ -170,15 +172,19 @@ build-alt-linux:
   variables:
     DISTRO: "alt-linux-p10"
   before_script:
+    - apt-get update
+    - apt-get install -y git make gcc
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - apt-get update
-    - apt-get install -y make gcc kernel-headers kernel-devel
 
 build-rockylinux-9:
   extends: .build-rpm-template
   variables:
     DISTRO: "rockylinux-9"
+  before_script:
+    - dnf install -y epel-release git make gcc
+    - git remote set-url origin http://localhost/root/33.git
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
 # ==========================================
 # Упаковка (ТЗ п. 5, 6)
@@ -235,8 +241,8 @@ release:
       - build/*.rpm
       - build/*.tar.gz
     expire_in: 1 month
-  only:
-    - tags
+  rules:
+    - if: $CI_COMMIT_TAG
 
 # ==========================================
 # Правила запуска (ТЗ п. 4.2)
