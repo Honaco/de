@@ -1,133 +1,49 @@
-# ============================================
-# GitLab CI/CD для Accord-LE Driver
-# ТЗ п. 4: CI/CD Pipeline
-# ============================================
-
 stages:
-  - validate
   - build
   - package
   - test
-  - release
 
-# ============================================
-# Reusable Templates (ТЗ п. 4.2)
-# ============================================
+# Матрица сборок для разных дистрибутивов
+build-ubuntu-20.04:
+  stage: build
+  image: ubuntu:20.04
+  script:
+    - apt update && apt install -y build-essential linux-headers-generic
+    - make build
+    - make package
+  artifacts:
+    paths:
+      - build/
 
-.ubuntu-template: &ubuntu-template
+build-ubuntu-22.04:
+  stage: build
   image: ubuntu:22.04
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq make gcc build-essential dpkg-dev rpm file
-    - apt-get install -y -qq kmod udev linux-headers-$(uname -r)
-  variables:
-    TARGET_OS: "ubuntu"
+  script:
+    - apt update && apt install -y build-essential linux-headers-generic
+    - make build
+    - make package
 
-.debian-template: &debian-template
-  image: debian:12
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq make gcc build-essential dpkg-dev rpm file
-    - apt-get install -y -qq kmod udev linux-headers-$(uname -r)
-  variables:
-    TARGET_OS: "debian"
+build-debian-11:
+  stage: build
+  image: debian:11
+  script:
+    - apt update && apt install -y build-essential linux-headers-amd64
+    - make build
+    - make package
 
-# ============================================
-# 1. VALIDATE (ТЗ п. 4.3)
-# ============================================
-
-validate:
-  stage: validate
+build-debian-12:
+  stage: build
   image: debian:12
   script:
-    - apt-get update -qq
-    - apt-get install -y -qq make gcc
-    - echo "🔍 Проверка Makefile'ов..."
-    - make -n build 2>/dev/null || true
-    - echo "✅ Валидация завершена"
-    - make --version
-  only:
-    - merge_requests
-    - main
+    - apt update && apt install -y build-essential linux-headers-amd64
+    - make build
+    - make package
 
-# ============================================
-# 2. BUILD (ТЗ п. 4.3) - Build Matrix
-# ============================================
-
-build:driver:ubuntu:
+# Для RPM-дистрибутивов
+build-alt-linux:
   stage: build
-  <<: *ubuntu-template
+  image: altlinux/p10
   script:
-    - echo "🔨 Сборка драйвера для Ubuntu..."
-    - export KERNEL_RELEASE=$(uname -r)
-    - make -C driver all
-    - file driver/accord-le.ko
-  artifacts:
-    paths:
-      - driver/accord-le.ko
-      - driver/99-accord-le.rules
-    expire_in: 1 day
-
-build:driver:debian:
-  stage: build
-  <<: *debian-template
-  script:
-    - echo "🔨 Сборка драйвера для Debian..."
-    - export KERNEL_RELEASE=$(uname -r)
-    - make -C driver all
-    - file driver/accord-le.ko
-  artifacts:
-    paths:
-      - driver/accord-le.ko
-      - driver/99-accord-le.rules
-    expire_in: 1 day
-
-build:tools:
-  stage: build
-  <<: *debian-template
-  script:
-    - echo "🔨 Сборка утилит..."
-    - make -C tools all
-  artifacts:
-    paths:
-      - tools/acle-*
-      - tools/convert_*
-      - build/acle-tools-bin.tar.xz
-    expire_in: 1 day
-
-# ============================================
-# 3. PACKAGE (ТЗ п. 4.3, 5)
-# ============================================
-
-package:driver:ubuntu:
-  stage: package
-  <<: *ubuntu-template
-  dependencies:
-    - build:driver:ubuntu
-  script:
-    - echo "📦 Упаковка драйвера для Ubuntu..."
-    - export KERNEL_RELEASE=$(uname -r)
-    - make -C driver package
-    - ls -lh build/accord-le-*
-  artifacts:
-    paths:
-      - build/accord-le-*.deb
-      - build/accord-le-*.rpm
-      - build/accord-le-*.tar.gz
-    expire_in: 1 week
-
-package:driver:debian:
-  stage: package
-  <<: *debian-template
-  dependencies:
-    - build:driver:debian
-  script:
-    - echo "📦 Упаковка драйвера для Debian..."
-    - export KERNEL_RELEASE=$(uname -r)
-    - make -C driver package
-    - ls -lh build/accord-le-*
-  artifacts:
-    paths:
-      - build/accord-le-*.deb
-      - build/accord-le-*.rpm
-      - build/accord-le-*.tar.gz
+    - apt-get update && apt-get install -y make gcc kernel-headers
+    - make build
+    - make package-rpm
