@@ -26,7 +26,6 @@ variables:
 .build-deb-template:
   stage: build
   image: debian:12
-  network_mode: "host"
   before_script:
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
@@ -43,7 +42,6 @@ variables:
 .build-rpm-template:
   stage: build
   image: rockylinux:9
-  network_mode: "host"
   before_script:
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
@@ -60,7 +58,6 @@ variables:
 .package-deb-template:
   stage: package
   image: debian:12
-  network_mode: "host"
   before_script:
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
@@ -76,7 +73,6 @@ variables:
 .package-rpm-template:
   stage: package
   image: rockylinux:9
-  network_mode: "host"
   before_script:
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
@@ -93,7 +89,6 @@ variables:
 .test-template:
   stage: test
   image: debian:12
-  network_mode: "host"
   before_script:
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
