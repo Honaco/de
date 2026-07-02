@@ -3,6 +3,13 @@
 # ТЗ п. 3.1, 3.2, 3.3, 3.5, 6.2
 # ==========================================
 
+# Переменные версии и платформы (со значениями по умолчанию)
+MODULE_VERSION ?= 1.0.0
+BUILD_NUM      ?= 1
+TARGET_ARCH    ?= $(shell uname -m)
+TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null || echo "debian")
+OUTPUT_DIR     ?= $(CURDIR)/../build
+
 KERNEL_RELEASE ?= $(shell uname -r)
 KERNEL_HEADERS ?= /lib/modules/$(KERNEL_RELEASE)/build
 INSTALL_PATH   := $(shell find /lib/modules/${KERNEL_RELEASE} -name accord-le.ko 2>/dev/null)
