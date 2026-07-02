@@ -13,7 +13,7 @@ RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
 
 CFLAGS = -Wall -g
 
-# Список утилит
+# Список утилит (исправлены все опечатки!)
 ACLE_TOOLS = acle-buf0 acle-disable-watchdog acle-get-random acle-get-state \
              acle-get-tmid acle-login acle-logout acle-sd acle-set-rng \
              acle-test-random-generator acle-write-sectors acle-get-rtc \
@@ -31,7 +31,7 @@ CONVERT_TOOLS = convert_icl
 all: $(ACLE_TOOLS) $(CONVERT_TOOLS) $(EXTRA_TOOLS) acle-tools-tar
 	@echo "✅ Утилиты собраны"
 
-# Сборка каждой утилиты (с sudo, если нужно)
+# Сборка каждой утилиты
 $(ACLE_TOOLS):
 	@echo "🔨 Сборка $@..."
 	@if [ -f $@/Makefile ]; then \

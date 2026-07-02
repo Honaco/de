@@ -41,41 +41,41 @@ build: driver tools
 driver:
 	@echo "🔨 Сборка драйвера..."
 	@mkdir -p $(OUTPUT_DIR)
-	$(MAKE) -C driver all
+	sudo $(MAKE) -C driver all
 
 tools:
 	@echo "🔧 Сборка утилит..."
 	@mkdir -p $(OUTPUT_DIR)
-	$(MAKE) -C tools all
+	sudo $(MAKE) -C tools all
 
 clean:
 	@echo "🧹 Очистка..."
-	$(MAKE) -C driver clean
-	$(MAKE) -C tools clean
-	rm -rf $(OUTPUT_DIR)
+	sudo $(MAKE) -C driver clean
+	sudo $(MAKE) -C tools clean
+	sudo rm -rf $(OUTPUT_DIR)
 
 install:
 	@echo "📥 Установка..."
-	$(MAKE) -C driver install
-	$(MAKE) -C tools install
+	sudo $(MAKE) -C driver install
+	sudo $(MAKE) -C tools install
 
 uninstall:
 	@echo "🗑️  Удаление..."
-	$(MAKE) -C driver uninstall
-	$(MAKE) -C tools uninstall
+	sudo $(MAKE) -C driver uninstall
+	sudo $(MAKE) -C tools uninstall
 
 package:
 	@echo "📦 Упаковка..."
 	@mkdir -p $(OUTPUT_DIR)
-	$(MAKE) -C driver package
-	$(MAKE) -C tools package
+	sudo $(MAKE) -C driver package
+	sudo $(MAKE) -C tools package
 	@echo "📂 Готовые пакеты:"
 	@ls -lh $(OUTPUT_DIR)/
 
 test:
 	@echo "🧪 Тестирование..."
-	$(MAKE) -C driver test
-	$(MAKE) -C tools test
+	sudo $(MAKE) -C driver test
+	sudo $(MAKE) -C tools test
 
 # ===== CI цели =====
 ci-build:
@@ -117,4 +117,4 @@ help:
 	@echo "  OUTPUT_DIR=/path      - Директория артефактов"
 	@echo ""
 	@echo "Пример:"
-	@echo "  make build KERNEL_HEADERS=/opt/custom-headers"
+	@echo "  sudo make build KERNEL_HEADERS=/opt/custom-headers"
