@@ -13,16 +13,16 @@ RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
 
 CFLAGS = -Wall -g
 
-# Список утилит (все папки, которые есть в tools/)
+# Список утилит
 ACLE_TOOLS = acle-buf0 acle-disable-watchdog acle-get-random acle-get-state \
              acle-get-tmid acle-login acle-logout acle-sd acle-set-rng \
              acle-test-random-generator acle-write-sectors acle-get-rtc \
              acle-set-rtc acle-set-sdc-mode
 
-# Дополнительные утилиты (если есть Makefile)
+# Дополнительные утилиты
 EXTRA_TOOLS = crypt_db decrypt_db_write
 
-# Конвертеры (только существующие)
+# Конвертеры
 CONVERT_TOOLS = convert_icl
 
 .PHONY: all clean install uninstall package package-tar package-deb package-rpm test
@@ -31,16 +31,27 @@ CONVERT_TOOLS = convert_icl
 all: $(ACLE_TOOLS) $(CONVERT_TOOLS) $(EXTRA_TOOLS) acle-tools-tar
 	@echo "✅ Утилиты собраны"
 
-# Сборка каждой утилиты
+# Сборка каждой утилиты (с sudo, если нужно)
 $(ACLE_TOOLS):
-	${MAKE} -C $@ all
+	@echo "🔨 Сборка $@..."
+	@if [ -f $@/Makefile ]; then \
+		sudo ${MAKE} -C $@ all; \
+	else \
+		echo "⚠️ $@/Makefile не найден, пропускаем"; \
+	fi
 
 $(CONVERT_TOOLS):
-	${MAKE} -C $@ all
+	@echo "🔨 Сборка $@..."
+	@if [ -f $@/Makefile ]; then \
+		sudo ${MAKE} -C $@ all; \
+	else \
+		echo "⚠️ $@/Makefile не найден, пропускаем"; \
+	fi
 
 $(EXTRA_TOOLS):
+	@echo "🔨 Сборка $@..."
 	@if [ -f $@/Makefile ]; then \
-		${MAKE} -C $@ all; \
+		sudo ${MAKE} -C $@ all; \
 	else \
 		echo "⚠️ $@: нет Makefile, пропускаем"; \
 	fi
@@ -60,7 +71,7 @@ acle-tools-tar:
 clean:
 	@for tool in $(ACLE_TOOLS) $(CONVERT_TOOLS) $(EXTRA_TOOLS); do \
 		if [ -f $$tool/Makefile ]; then \
-			${MAKE} -C $$tool clean 2>/dev/null || true; \
+			sudo ${MAKE} -C $$tool clean 2>/dev/null || true; \
 		fi; \
 	done
 	rm -f acle-tools-bin.tar.xz
@@ -70,23 +81,23 @@ clean:
 install:
 	@echo "📥 Установка утилит..."
 	@for tool in $(ACLE_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool /usr/local/bin/; fi; \
+		if [ -f $$tool/$$tool ]; then sudo cp $$tool/$$tool /usr/local/bin/; fi; \
 	done
 	@for tool in $(EXTRA_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool /usr/local/bin/; fi; \
+		if [ -f $$tool/$$tool ]; then sudo cp $$tool/$$tool /usr/local/bin/; fi; \
 	done
-	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl /usr/local/bin/; fi
-	@mkdir -p /usr/local/share/acle-tools/scripts
-	@cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 2>/dev/null || true
-	@chmod +x /usr/local/share/acle-tools/scripts/*.sh 2>/dev/null || true
+	@if [ -f convert_icl/convert_icl ]; then sudo cp convert_icl/convert_icl /usr/local/bin/; fi
+	@sudo mkdir -p /usr/local/share/acle-tools/scripts
+	@sudo cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 2>/dev/null || true
+	@sudo chmod +x /usr/local/share/acle-tools/scripts/*.sh 2>/dev/null || true
 	@echo "✅ Утилиты установлены"
 
 # ===== Удаление =====
 uninstall:
 	@echo "🗑️  Удаление утилит..."
-	@for tool in $(ACLE_TOOLS) $(EXTRA_TOOLS); do rm -f /usr/local/bin/$$tool; done
-	@rm -f /usr/local/bin/convert_icl
-	@rm -rf /usr/local/share/acle-tools
+	@for tool in $(ACLE_TOOLS) $(EXTRA_TOOLS); do sudo rm -f /usr/local/bin/$$tool; done
+	@sudo rm -f /usr/local/bin/convert_icl
+	@sudo rm -rf /usr/local/share/acle-tools
 	@echo "✅ Утилиты удалены"
 
 # ===== Тесты =====
