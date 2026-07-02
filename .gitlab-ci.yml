@@ -28,7 +28,7 @@ variables:
   image: debian:12
   before_script:
     - apt update
-    - apt install -y git build-essential make
+    - apt install -y git build-essential make kmod
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
@@ -43,7 +43,7 @@ variables:
   stage: build
   image: rockylinux:9
   before_script:
-    - dnf install -y epel-release git make gcc
+    - dnf install -y epel-release git make gcc kmod
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
@@ -59,7 +59,7 @@ variables:
   image: debian:12
   before_script:
     - apt update
-    - apt install -y git dpkg-dev make
+    - apt install -y git dpkg-dev make kmod
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
@@ -75,7 +75,7 @@ variables:
   stage: package
   image: rockylinux:9
   before_script:
-    - dnf install -y epel-release git rpm-build make
+    - dnf install -y epel-release git rpm-build make kmod
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
@@ -92,7 +92,7 @@ variables:
   image: debian:12
   before_script:
     - apt update
-    - apt install -y git make
+    - apt install -y git make kmod
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
   script:
@@ -128,7 +128,7 @@ build-ubuntu-20.04:
     DISTRO: "ubuntu-20.04"
   before_script:
     - apt update
-    - apt install -y git build-essential make
+    - apt install -y git build-essential make kmod linux-headers-generic
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
@@ -139,7 +139,7 @@ build-ubuntu-22.04:
     DISTRO: "ubuntu-22.04"
   before_script:
     - apt update
-    - apt install -y git build-essential make
+    - apt install -y git build-essential make kmod linux-headers-generic
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
@@ -150,7 +150,7 @@ build-debian-11:
     DISTRO: "debian-11"
   before_script:
     - apt update
-    - apt install -y git build-essential make
+    - apt install -y git build-essential make kmod linux-headers-amd64
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
@@ -161,7 +161,7 @@ build-debian-12:
     DISTRO: "debian-12"
   before_script:
     - apt update
-    - apt install -y git build-essential make
+    - apt install -y git build-essential make kmod linux-headers-amd64
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
@@ -173,7 +173,7 @@ build-alt-linux:
     DISTRO: "alt-linux-p10"
   before_script:
     - apt-get update
-    - apt-get install -y git make gcc
+    - apt-get install -y git make gcc kmod kernel-headers
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
@@ -182,7 +182,7 @@ build-rockylinux-9:
   variables:
     DISTRO: "rockylinux-9"
   before_script:
-    - dnf install -y epel-release git make gcc
+    - dnf install -y epel-release git make gcc kmod kernel-devel
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
 
