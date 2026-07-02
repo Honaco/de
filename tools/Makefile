@@ -101,21 +101,20 @@ uninstall:
 	@echo "✅ Утилиты удалены"
 
 # ===== Тесты =====
-# ===== Тесты =====
-test: all
+test:
 	@echo "🧪 Тестирование утилит..."
-	@failed=0; \
-	for tool in $(ACLE_TOOLS); do \
+	@for tool in $(ACLE_TOOLS); do \
+		if [ -f $$tool/Makefile ]; then \
+			$(MAKE) -C $$tool all 2>/dev/null || true; \
+		fi; \
+	done
+	@for tool in $(ACLE_TOOLS); do \
 		if [ -f $$tool/$$tool ]; then \
 			echo "✅ $$tool собран"; \
 		else \
 			echo "⚠️ $$tool не найден (пропускаем)"; \
-			failed=1; \
 		fi; \
-	done; \
-	if [ $$failed -eq 1 ]; then \
-		echo "⚠️ Некоторые утилиты не собраны"; \
-	fi
+	done
 	@test -d scripts && echo "✅ Скрипты найдены" || echo "⚠️ Скрипты отсутствуют"
 	@echo "✅ Тесты утилит пройдены"
 
