@@ -13,13 +13,13 @@ RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
 
 CFLAGS = -Wall -g
 
-# Список утилит
+# Список утилит (исправлены имена)
 ACLE_TOOLS = acle-buf0 acle-disable-watchdog acle-get-random acle-get-state \
              acle-get-tmid acle-login acle-logout acle-sd acle-set-rng \
              acle-test-random-generator acle-write-sectors acle-get-rtc \
              acle-set-rtc acle-set-sdc-mode
 
-CONVERT_TOOLS = convert_icl
+CONVERT_TOOLS = convert_icl convert_hd_serial
 
 .PHONY: all clean install uninstall package package-tar package-deb package-rpm test
 
@@ -60,6 +60,7 @@ install:
 		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool /usr/local/bin/; fi; \
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl /usr/local/bin/; fi
+	@if [ -f convert_hd_serial/convert_hd_serial ]; then cp convert_hd_serial/convert_hd_serial /usr/local/bin/; fi
 	@mkdir -p /usr/local/share/acle-tools/scripts
 	@cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 2>/dev/null || true
 	@chmod +x /usr/local/share/acle-tools/scripts/*.sh 2>/dev/null || true
@@ -70,6 +71,7 @@ uninstall:
 	@echo "🗑️  Удаление утилит..."
 	@for tool in $(ACLE_TOOLS); do rm -f /usr/local/bin/$$tool; done
 	@rm -f /usr/local/bin/convert_icl
+	@rm -f /usr/local/bin/convert_hd_serial
 	@rm -rf /usr/local/share/acle-tools
 	@echo "✅ Утилиты удалены"
 
@@ -97,6 +99,7 @@ package-tar:
 		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi
+	@if [ -f convert_hd_serial/convert_hd_serial ]; then cp convert_hd_serial/convert_hd_serial $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi
 	@mkdir -p $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts
 	@cp scripts/*.sh $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts/ 2>/dev/null || true
 	@tar -czf $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz \
@@ -115,6 +118,7 @@ package-deb:
 		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; \
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/deb-tools/usr/bin/; fi
+	@if [ -f convert_hd_serial/convert_hd_serial ]; then cp convert_hd_serial/convert_hd_serial $(OUTPUT_DIR)/deb-tools/usr/bin/; fi
 	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
@@ -148,6 +152,7 @@ package-rpm:
 		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi
+	@if [ -f convert_hd_serial/convert_hd_serial ]; then cp convert_hd_serial/convert_hd_serial $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi
 	@cp scripts/*.sh $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/ 2>/dev/null || true
 	
 	@echo "Name: acle-tools" > $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
@@ -169,8 +174,9 @@ package-rpm:
 	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "%files" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "/usr/bin/acle-*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "/usr/bin/convert_*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "/usr/share/acle-tools/*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-		
+	
 	@if command -v rpmbuild >/dev/null 2>&1; then \
 		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-tools" \
 			--define "_sourcedir $(OUTPUT_DIR)/rpm-tools/SOURCES" \
