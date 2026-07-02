@@ -3,10 +3,16 @@ stages:
   - package
   - test
 
+# Исправляем Git URL для всех job
+.default-before: &default-before
+  - git remote set-url origin http://localhost:8000/root/33.git
+  - git config --global --add safe.directory "$CI_PROJECT_DIR"
+
 # Матрица сборок для разных дистрибутивов
 build-ubuntu-20.04:
   stage: build
   image: ubuntu:20.04
+  before_script: *default-before
   script:
     - apt update && apt install -y build-essential linux-headers-generic
     - make build
@@ -18,6 +24,7 @@ build-ubuntu-20.04:
 build-ubuntu-22.04:
   stage: build
   image: ubuntu:22.04
+  before_script: *default-before
   script:
     - apt update && apt install -y build-essential linux-headers-generic
     - make build
@@ -26,6 +33,7 @@ build-ubuntu-22.04:
 build-debian-11:
   stage: build
   image: debian:11
+  before_script: *default-before
   script:
     - apt update && apt install -y build-essential linux-headers-amd64
     - make build
@@ -34,6 +42,7 @@ build-debian-11:
 build-debian-12:
   stage: build
   image: debian:12
+  before_script: *default-before
   script:
     - apt update && apt install -y build-essential linux-headers-amd64
     - make build
@@ -43,6 +52,7 @@ build-debian-12:
 build-alt-linux:
   stage: build
   image: altlinux/p10
+  before_script: *default-before
   script:
     - apt-get update && apt-get install -y make gcc kernel-headers
     - make build
