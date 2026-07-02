@@ -96,10 +96,22 @@ test:
 		if [ -f $$tool/$$tool ]; then \
 			echo "✅ $$tool собран"; \
 		else \
-			echo "❌ $$tool не найден"; \
+			echo "❌ $$tool не найден (ищем $$tool/$$tool)"; \
 			exit 1; \
 		fi; \
 	done
+	@for tool in $(EXTRA_TOOLS); do \
+		if [ -f $$tool/$$tool ]; then \
+			echo "✅ $$tool собран"; \
+		else \
+			echo "⚠️ $$tool не найден (пропускаем)"; \
+		fi; \
+	done
+	@if [ -f convert_icl/convert_icl ]; then \
+		echo "✅ convert_icl собран"; \
+	else \
+		echo "⚠️ convert_icl не найден"; \
+	fi
 	@test -d scripts && echo "✅ Скрипты найдены" || echo "❌ Скрипты отсутствуют"
 	@echo "✅ Тесты утилит пройдены"
 
