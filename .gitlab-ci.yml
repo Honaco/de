@@ -1,35 +1,52 @@
 stages:
-  - build
+  - build # Проработать этапы пайплайна
 
-# Шаблон для переиспользования (ТЗ п. 4.2)
+variables:
+  # Поддерживаемые параметры сборки
+  BUILD_NUM: "$CI_PIPELINE_IID"
+  OUTPUT_DIR: "$CI_PROJECT_DIR/build"
+  # Версия (MODULE_VERSION) автоматически сформируется твоим корневым Makefile 
+  # на основе git tag, номера сборки и commit hash
+
+# Использование reusable templates для минимизации дублирования конфигурации
 .build_template:
   stage: build
-  image: $DOCKER_IMAGE
+  # Изоляция сборочных окружений обеспечивается запуском в отдельных Docker-контейнерах[cite: 1]
   before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq make gcc kmod $HEADERS_PKG
-    # Находим путь к заголовкам
-    - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-* | head -1)
-    - echo "Using kernel headers: $KERNEL_HEADERS_DIR"
+    - apt-get update -yqq
+    - apt-get install -yqq build-essential git kmod bc libelf-dev
+    # Установка заголовочных файлов ядра (для Ubuntu/Debian)
+    - apt-get install -yqq linux-headers-generic
+    # Для кастомных ядер можно передавать KERNEL_HEADERS извне, например:
+    # make build KERNEL_HEADERS=/opt/custom-headers[cite: 1]
   script:
-    - make ci-build TARGET_OS=$TARGET_OS KERNEL_HEADERS=$KERNEL_HEADERS_DIR
+    - echo "Начинаем сборку для $TARGET_OS ($TARGET_ARCH)..."
+    # Вызов твоей готовой цели ci-build из корневого Makefile
+    - make ci-build BUILD_NUM=$BUILD_NUM OUTPUT_DIR=$OUTPUT_DIR
   artifacts:
+    # Структура каталогов сохраняется согласно формату артефактов[cite: 1]
+    name: "accord-le-build-$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     paths:
-      - build/
+      - $OUTPUT_DIR/
     expire_in: 1 week
-    
-# Джоба для Debian 12
-build:debian12:
-  extends: .build_template
-  variables:
-    DOCKER_IMAGE: debian:12
-    TARGET_OS: debian
-    HEADERS_PKG: linux-headers-amd64
 
-# Джоба для Ubuntu 20.04
-build:ubuntu2004:
+# Декларативное добавление новых платформ без дублирования job[cite: 1]
+build_accord_le:
   extends: .build_template
-  variables:
-    DOCKER_IMAGE: ubuntu:20.04
-    TARGET_OS: ubuntu
-    HEADERS_PKG: linux-headers-generic
+  image: ${OS_IMAGE}
+  # Поддержка build matrix для масштабируемости[cite: 1]
+  parallel:
+    matrix:
+      - OS_IMAGE:
+        # Минимально поддерживаемые ОС (Debian и Ubuntu)[cite: 1]
+        - ubuntu:20.04
+        - ubuntu:22.04
+        - ubuntu:24.04
+        - debian:11
+        - debian:12
+        
+        # Для отечественных ОС (Astra Linux, ALT Linux, РедОС, АМДЗ ОС)[cite: 1] 
+        # необходимо указать пути к вашим внутренним Docker-образам, например:
+        # - your-registry.local/astra-linux:1.7
+        # - your-registry.local/alt-linux:10
+        # - your-registry.local/redos:7.3
