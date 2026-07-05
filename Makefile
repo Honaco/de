@@ -96,11 +96,19 @@ test:
 	sudo $(MAKE) -C tools test
 
 # ===== CI цели =====
+
+
 ci-build:
-	@echo "🔨 CI сборка..."
+	@echo "🔨 CI сборка: драйвер и утилиты..."
 	@mkdir -p $(OUTPUT_DIR)
+	# 1. Сборка
 	$(MAKE) -C driver all
 	$(MAKE) -C tools all
+	# 2. Явное копирование драйвера (ищем в подпапках, если нужно)
+	@find driver -name "accord-le.ko" -exec cp {} $(OUTPUT_DIR)/ \;
+	# 3. Фиксация результата
+	@echo "✅ Артефакты собраны в $(OUTPUT_DIR):"
+	@ls -lh $(OUTPUT_DIR)
 
 ci-package:
 	@echo "📦 CI упаковка..."
