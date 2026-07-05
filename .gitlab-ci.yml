@@ -1,116 +1,34 @@
-# ==========================================
-# GitLab CI/CD Pipeline для Accord-LE
-# Только этапы: validate, build
-# Поддержка: Debian 11, Debian 12
-# ==========================================
-
 stages:
-  - validate
   - build
 
-# ==========================================
-# Глобальные переменные (ТЗ п. 3.3, 7)
-# ==========================================
-variables:
-  GIT_DEPTH: "20"
-  MODULE_VERSION: "$CI_COMMIT_TAG"
-  BUILD_NUM: "$CI_PIPELINE_IID"
-  OUTPUT_DIR: "$CI_PROJECT_DIR/build"
-
-# ==========================================
-# Reusable Templates (ТЗ п. 4.2)
-# ==========================================
-
-# Шаблон валидации
-.validate-template:
-  stage: validate
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache git make bash
-  script:
-    - echo "🔍 Валидация конфигурации..."
-    - echo "CI_COMMIT_TAG ${CI_COMMIT_TAG:-not set}"
-    - echo "CI_PIPELINE_IID $CI_PIPELINE_IID"
-    - make help
-    - echo "✅ Валидация пройдена"
-
-# Шаблон сборки для DEB-дистрибутивов (ТЗ п. 3.1, 3.4, 3.5)
-.build-deb-template:
+# Шаблон для переиспользования (ТЗ п. 4.2)
+.build_template:
   stage: build
+  image: $DOCKER_IMAGE
   before_script:
-    - echo "🔧 Подготовка окружения..."
-    - apt update
-    - apt install -y git build-essential make kmod wget curl
-    - echo " Версия ядра хоста $(uname -r)"
-    - echo "🔍 Дистрибутив $DISTRO"
-    # Установка kernel headers (ТЗ п. 3.5)
-    - |
-      if [ "$DISTRO" = "debian-12" ]; then
-        echo " Установка headers для Debian 12..."
-        apt install -y linux-headers-amd64 || echo "⚠️ Заголовки не найдены"
-      elif [ "$DISTRO" = "debian-11" ]; then
-        echo " Установка headers для Debian 11..."
-        apt install -y linux-headers-amd64 || echo "⚠️ Заголовки не найдены"
-      fi
-    - echo "🔍 Поиск установленных заголовков:"
-    - ls -la /lib/modules/*/build 2>/dev/null || echo "⚠️ Заголовки не найдены"
-    - export KERNEL_DIR=$(ls -d /lib/modules/*/build 2>/dev/null | head -1)
-    - echo "🔍 Найденные headers $KERNEL_DIR"
-    # Настройка git
-    - git remote set-url origin http://localhost/root/33.git 2>/dev/null || true
-    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+    - apt-get update -qq
+    # Устанавливаем компилятор, make и заголовки ядра для конкретной ОС
+    - apt-get install -y -qq make gcc kmod $HEADERS_PKG
   script:
-    - echo "🔨 Сборка Accord-LE..."
-    - echo "MODULE_VERSION ${MODULE_VERSION:-1.0.0}"
-    - echo "BUILD_NUM $BUILD_NUM"
-    - |
-      if [ -n "$KERNEL_DIR" ] && [ -d "$KERNEL_DIR" ]; then
-        echo "✅ Kernel headers найдены: $KERNEL_DIR"
-        make ci-build MODULE_VERSION=${MODULE_VERSION:-1.0.0} BUILD_NUM=$BUILD_NUM
-      else
-        echo "⚠️ Kernel headers не найдены, собираем только утилиты"
-        make -C tools all
-      fi
-    - echo "✅ Сборка завершена"
-    - echo " Содержимое build/:"
-    - ls -la build/ || echo "build/ не создан"
+    # Вызываем цель ci-build из твоего корневого Makefile
+    - make ci-build TARGET_OS=$TARGET_OS
   artifacts:
     paths:
       - build/
     expire_in: 1 week
 
-# ==========================================
-# Валидация (ТЗ п. 4.3)
-# ==========================================
-validate-config:
-  extends: .validate-template
-
-# ==========================================
-# Build Matrix (ТЗ п. 3.4, 4.2)
-# ==========================================
-
-# Debian 12 (Bookworm)
-build-debian-12:
-  extends: .build-deb-template
-  image: debian:12
+# Джоба для Debian 12
+build:debian12:
+  extends: .build_template
   variables:
-    DISTRO: "debian-12"
-    TARGET_OS: "debian"
-    TARGET_ARCH: "amd64"
+    DOCKER_IMAGE: debian:12
+    TARGET_OS: debian
+    HEADERS_PKG: linux-headers-amd64
 
-# Debian 11 (Bullseye)
-build-debian-11:
-  extends: .build-deb-template
-  image: debian:11
+# Джоба для Ubuntu 20.04
+build:ubuntu2004:
+  extends: .build_template
   variables:
-    DISTRO: "debian-11"
-    TARGET_OS: "debian"
-    TARGET_ARCH: "amd64"
-
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_COMMIT_TAG
-    - when: always
+    DOCKER_IMAGE: ubuntu:20.04
+    TARGET_OS: ubuntu
+    HEADERS_PKG: linux-headers-generic
