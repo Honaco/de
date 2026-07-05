@@ -1,5 +1,6 @@
 stages:
   - build
+  - package
 
 variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
@@ -40,3 +41,19 @@ build:matrix:
     - apt-get update -yqq
     # Ставим sudo (он нужен твоим под-макефайлам) и заголовки
     - apt-get install -yqq build-essential sudo git linux-headers-generic
+    
+# --- Этап PACKAGE ---
+package:
+  extends: .env_template
+  stage: package
+  image: ubuntu:22.04
+  script:
+    - make ci-package
+  needs:
+    - job: build:matrix
+      artifacts: true
+  artifacts:
+    name: "accord-le-packages-$CI_PIPELINE_IID"
+    paths:
+      - build/packages/
+    expire_in: 2 weeks
