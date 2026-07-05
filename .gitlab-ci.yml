@@ -48,11 +48,15 @@ build:matrix:
     - apt-get install -yqq build-essential sudo git linux-headers-generic
     
 # --- Этап PACKAGE ---
+# --- Этап PACKAGE ---
 package:
   extends: .env_template
   stage: package
   image: ubuntu:22.04
   script:
+    # Восстанавливаем артефакты: файлы из build/ копируем туда, где их ожидает make
+    - cp build/accord-le.ko driver/ || echo "Файл уже на месте"
+    # Теперь вызываем упаковку
     - make ci-package
   needs:
     - job: build:matrix
