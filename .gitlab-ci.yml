@@ -7,16 +7,17 @@ stages:
   image: $DOCKER_IMAGE
   before_script:
     - apt-get update -qq
-    # Устанавливаем компилятор, make и заголовки ядра для конкретной ОС
     - apt-get install -y -qq make gcc kmod $HEADERS_PKG
+    # Находим путь к заголовкам
+    - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-* | head -1)
+    - echo "Using kernel headers: $KERNEL_HEADERS_DIR"
   script:
-    # Вызываем цель ci-build из твоего корневого Makefile
-    - make ci-build TARGET_OS=$TARGET_OS
+    - make ci-build TARGET_OS=$TARGET_OS KERNEL_HEADERS=$KERNEL_HEADERS_DIR
   artifacts:
     paths:
       - build/
     expire_in: 1 week
-
+    
 # Джоба для Debian 12
 build:debian12:
   extends: .build_template
