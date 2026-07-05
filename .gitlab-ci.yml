@@ -1,52 +1,46 @@
 stages:
-  - build # Проработать этапы пайплайна
+  - build
 
 variables:
-  # Поддерживаемые параметры сборки
-  BUILD_NUM: "$CI_PIPELINE_IID"
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
-  # Версия (MODULE_VERSION) автоматически сформируется твоим корневым Makefile 
-  # на основе git tag, номера сборки и commit hash
+  BUILD_NUM: "$CI_PIPELINE_IID"
+  MODULE_VERSION: "${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
 
-# Использование reusable templates для минимизации дублирования конфигурации
 .build_template:
   stage: build
-  # Изоляция сборочных окружений обеспечивается запуском в отдельных Docker-контейнерах[cite: 1]
-  before_script:
-    - apt-get update -yqq
-    - apt-get install -yqq build-essential git kmod bc libelf-dev
-    # Установка заголовочных файлов ядра (для Ubuntu/Debian)
-    - apt-get install -yqq linux-headers-generic
-    # Для кастомных ядер можно передавать KERNEL_HEADERS извне, например:
-    # make build KERNEL_HEADERS=/opt/custom-headers[cite: 1]
   script:
-    - echo "Начинаем сборку для $TARGET_OS ($TARGET_ARCH)..."
-    # Вызов твоей готовой цели ci-build из корневого Makefile
-    - make ci-build BUILD_NUM=$BUILD_NUM OUTPUT_DIR=$OUTPUT_DIR
+    # 1. Динамически определяем ОС и архитектуру прямо внутри контейнера
+    - export TARGET_ARCH=$(uname -m)
+    - export TARGET_OS=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"' || echo "debian")
+    
+    # 2. Находим точный путь к заголовкам ядра, которые только что установил apt
+    - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-*-generic 2>/dev/null | head -n 1 || ls -d /usr/src/linux-headers-* 2>/dev/null | grep -v "common" | head -n 1)
+    
+    - echo "Начинаем сборку для ОС $TARGET_OS ($TARGET_ARCH)..."
+    - echo "Используем заголовки ядра из $KERNEL_HEADERS_DIR"
+    
+    # 3. Передаем все параметры строго через явный перенос строк с символом '\'
+    - make ci-build \
+        KERNEL_HEADERS="$KERNEL_HEADERS_DIR" \
+        TARGET_OS="$TARGET_OS" \
+        TARGET_ARCH="$TARGET_ARCH" \
+        MODULE_VERSION="$MODULE_VERSION" \
+        BUILD_NUM="$BUILD_NUM" \
+        OUTPUT_DIR="$OUTPUT_DIR"
   artifacts:
-    # Структура каталогов сохраняется согласно формату артефактов[cite: 1]
-    name: "accord-le-build-$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+    name: "accord-le-$CI_JOB_NAME-$CI_PIPELINE_IID"
     paths:
-      - $OUTPUT_DIR/
+      - build/
     expire_in: 1 week
 
-# Декларативное добавление новых платформ без дублирования job[cite: 1]
-build_accord_le:
+# Матрица сборки для разных дистрибутивов
+build:matrix:
   extends: .build_template
-  image: ${OS_IMAGE}
-  # Поддержка build matrix для масштабируемости[cite: 1]
   parallel:
     matrix:
-      - OS_IMAGE:
-        # Минимально поддерживаемые ОС (Debian и Ubuntu)[cite: 1]
-        - ubuntu:20.04
-        - ubuntu:22.04
-        - ubuntu:24.04
-        - debian:11
-        - debian:12
-        
-        # Для отечественных ОС (Astra Linux, ALT Linux, РедОС, АМДЗ ОС)[cite: 1] 
-        # необходимо указать пути к вашим внутренним Docker-образам, например:
-        # - your-registry.local/astra-linux:1.7
-        # - your-registry.local/alt-linux:10
-        # - your-registry.local/redos:7.3
+      - OS_IMAGE: ["ubuntu:20.04", "ubuntu:22.04", "ubuntu:24.04", "debian:11", "debian:12"]
+  image: $OS_IMAGE
+  before_script:
+    - apt-get update -yqq
+    # Ставим sudo (он нужен твоим под-макефайлам) и заголовки
+    - apt-get install -yqq build-essential sudo git linux-headers-generic
