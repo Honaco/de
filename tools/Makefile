@@ -153,7 +153,12 @@ package-deb:
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
 
 	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "Version: 1.$(MODULE_VERSION)" | sed 's/1.-/-/g' > $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp
+	# Гарантируем, что версия начинается с цифры
+	@if echo "$(MODULE_VERSION)" | grep -q '^-'; then \
+		echo "Version: 0$(MODULE_VERSION)" >> /builds/root/33/build/deb-driver/DEBIAN/control; \
+	else \
+		echo "Version: $(MODULE_VERSION)" >> /builds/root/33/build/deb-driver/DEBIAN/control; \
+	fi
 	@cat $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@rm $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp
 
