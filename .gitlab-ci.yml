@@ -9,24 +9,20 @@ variables:
 .build_template:
   stage: build
   script:
-    # 1. Динамически определяем ОС и архитектуру прямо внутри контейнера
-    - export TARGET_ARCH=$(uname -m)
-    - export TARGET_OS=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"' || echo "debian")
-    
-    # 2. Находим точный путь к заголовкам ядра, которые только что установил apt
-    - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-*-generic 2>/dev/null | head -n 1 || ls -d /usr/src/linux-headers-* 2>/dev/null | grep -v "common" | head -n 1)
-    
-    - echo "Начинаем сборку для ОС $TARGET_OS ($TARGET_ARCH)..."
-    - echo "Используем заголовки ядра из $KERNEL_HEADERS_DIR"
-    
-    # 3. Передаем все параметры строго через явный перенос строк с символом '\'
-    - make ci-build \
-        KERNEL_HEADERS="$KERNEL_HEADERS_DIR" \
-        TARGET_OS="$TARGET_OS" \
-        TARGET_ARCH="$TARGET_ARCH" \
-        MODULE_VERSION="$MODULE_VERSION" \
-        BUILD_NUM="$BUILD_NUM" \
-        OUTPUT_DIR="$OUTPUT_DIR"
+      - export TARGET_ARCH=$(uname -m)
+      - export TARGET_OS=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"' || echo "debian")
+      - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-*-generic 2>/dev/null | head -n 1 || ls -d /usr/src/linux-headers-* 2>/dev/null | grep -v "common" | head -n 1)
+      
+      # Передаем переменные как переменные окружения, которые Makefile подхватит автоматически
+      - export KERNEL_HEADERS="$KERNEL_HEADERS_DIR"
+      - export TARGET_OS="$TARGET_OS"
+      - export TARGET_ARCH="$TARGET_ARCH"
+      - export MODULE_VERSION="$MODULE_VERSION"
+      - export BUILD_NUM="$BUILD_NUM"
+      - export OUTPUT_DIR="$OUTPUT_DIR"
+      
+      # Теперь просто вызываем цель без длинной строки с переносами
+      - make ci-build
   artifacts:
     name: "accord-le-$CI_JOB_NAME-$CI_PIPELINE_IID"
     paths:

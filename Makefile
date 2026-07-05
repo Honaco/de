@@ -49,7 +49,7 @@ build: driver tools
 
 
 driver:
-    @echo "🔨 Сборка драйвера..."
+    @echo "Сборка драйвера..."
     @mkdir -p $(OUTPUT_DIR)
     sudo $(MAKE) -C driver all
     # Добавляем принудительное копирование артефакта драйвера в папку build
