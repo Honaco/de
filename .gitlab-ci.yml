@@ -37,19 +37,19 @@ build-debian-12:
   stage: build
   image: debian:12
   before_script:
+    - echo "🔍 Определение версии ядра..."
+    - KERNEL_VERSION=$(uname -r)
+    - echo "🔍 Версия ядра: $KERNEL_VERSION"
     - echo "🔍 Установка зависимостей..."
     - apt update
-    - apt install -y git build-essential make kmod linux-headers-amd64
-    - echo "🔍 Версия ядра хоста: $(uname -r)"
-    - echo "🔍 Версия в контейнере: $(uname -r)"
-    - echo "🔍 Проверка заголовков ядра:"
-    - ls -la /lib/modules/ || echo "Нет /lib/modules"
-    - ls -la /lib/modules/$(uname -r)/ 2>/dev/null || echo "Нет директории для текущего ядра"
+    - apt install -y git build-essential make kmod
+    - echo "🔍 Установка заголовков ядра $KERNEL_VERSION..."
+    - apt install -y linux-headers-$KERNEL_VERSION || (echo "⚠️ Заголовки $KERNEL_VERSION не найдены, пробуем generic..." && apt install -y linux-headers-generic)
+    - echo "🔍 Проверка заголовков:"
+    - ls -la /lib/modules/$KERNEL_VERSION/build || echo "❌ Заголовки не найдены"
     - echo "🔍 Настройка git..."
     - git remote set-url origin http://localhost/root/33.git
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - echo "🔍 Структура проекта:"
-    - ls -la
   script:
     - echo "🔨 Запуск сборки..."
     - make ci-build MODULE_VERSION=${MODULE_VERSION} BUILD_NUM=${BUILD_NUM}
