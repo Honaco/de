@@ -29,6 +29,11 @@ variables:
     paths:
       - build/
     expire_in: 1 week
+  
+.env_template:
+  before_script:
+    - apt-get update -yqq
+    - apt-get install -yqq build-essential sudo git linux-headers-generic
 
 # Матрица сборки для разных дистрибутивов
 build:matrix:
