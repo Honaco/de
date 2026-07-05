@@ -145,19 +145,18 @@ package-deb:
 	@mkdir -p $(OUTPUT_DIR)/deb-tools/usr/bin
 	@mkdir -p $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts
 	@chmod -R 0755 $(OUTPUT_DIR)/deb-tools/DEBIAN
-	@for tool in $(ACLE_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; \
-	done
-	@for tool in $(EXTRA_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; \
-	done
+	@for tool in $(ACLE_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
+	@for tool in $(EXTRA_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/deb-tools/usr/bin/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true
-	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
+	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
+	
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
+
 	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "VERSION_STRING="0.$(MODULE_VERSION)"" 
-	@echo "Version: $VERSION_STRING" >> .../control
+	@echo "Version: 1.$(MODULE_VERSION)" | sed 's/1.-/-/g' > $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp
+	@cat $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
+	@rm $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp
+
 	@if [ "$(TARGET_ARCH)" = "x86_64" ]; then \
 		echo "Architecture: amd64" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control; \
 	else \
