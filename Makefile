@@ -47,10 +47,18 @@ build: driver tools
 	@echo "✅ Сборка завершена. Версия: $(MODULE_VERSION)"
 	@echo "📂 Артефакты в: $(OUTPUT_DIR)"
 
+
 driver:
-	@echo "🔨 Сборка драйвера..."
-	@mkdir -p $(OUTPUT_DIR)
-	sudo $(MAKE) -C driver all
+    @echo "🔨 Сборка драйвера..."
+    @mkdir -p $(OUTPUT_DIR)
+    sudo $(MAKE) -C driver all
+    # Добавляем принудительное копирование артефакта драйвера в папку build
+    @if [ -f driver/accord-le.ko ]; then \
+        cp driver/accord-le.ko $(OUTPUT_DIR)/; \
+    else \
+        echo "⚠️ Внимание: файл accord-le.ko не найден после сборки!"; \
+        exit 1; \
+    fi
 
 tools:
 	@echo "🔧 Сборка утилит..."
