@@ -62,10 +62,10 @@ acle-tools-tar:
 	find ./ -maxdepth 1 -type f -executable -name "acle-*" -exec cp {} acle-tools/ \;
 	find ./ -maxdepth 1 -type f -executable -name "convert_*" -exec cp {} acle-tools/ \; 2>/dev/null || true
 	cp -r scripts/ acle-tools/scripts/ 2>/dev/null || true
-	tar -cJvf acle-tools-bin.tar.xz acle-tools
+	tar -cJvf acle-tools-bin.tar.gz acle-tools
 	rm -rf acle-tools
 	mkdir -p $(OUTPUT_DIR)
-	mv acle-tools-bin.tar.xz $(OUTPUT_DIR)/
+	mv acle-tools-bin.tar.gz $(OUTPUT_DIR)/
 
 # ===== Очистка =====
 clean:
@@ -74,7 +74,7 @@ clean:
 			sudo ${MAKE} -C $$tool clean 2>/dev/null || true; \
 		fi; \
 	done
-	rm -f acle-tools-bin.tar.xz
+	rm -f acle-tools-bin.tar.gz
 	rm -rf acle-tools
 
 # ===== Установка =====
