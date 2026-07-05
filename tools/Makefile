@@ -156,7 +156,8 @@ package-deb:
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
 	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "Version: $(MODULE_VERSION)-$(BUILD_NUM)" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
+	@echo "VERSION_STRING="0.$(MODULE_VERSION)"" 
+	@echo "Version: $VERSION_STRING" >> .../control
 	@if [ "$(TARGET_ARCH)" = "x86_64" ]; then \
 		echo "Architecture: amd64" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control; \
 	else \
