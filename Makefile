@@ -111,9 +111,13 @@ ci-build:
 	@ls -lh $(OUTPUT_DIR)
 
 ci-package:
-	@echo "📦 CI упаковка..."
+	@echo "📦 Сборка пакетов (CI)..."
+	@mkdir -p $(PACKAGES_DIR)
+	# Предполагаем, что внутри driver/ и tools/ есть цели package
 	$(MAKE) -C driver package
 	$(MAKE) -C tools package
+	@echo "✅ Пакеты собраны в $(PACKAGES_DIR)"
+	@ls -lh $(PACKAGES_DIR)
 
 ci-test:
 	@echo "🧪 CI тестирование..."
