@@ -119,106 +119,101 @@ test:
 	@echo "✅ Тесты утилит пройдены"
 
 # ===== Упаковка =====
+# ===== Упаковка =====
 package: package-tar package-deb package-rpm
 
-# TAR.GZ: acle-tools-<version>-<arch>.tar.gz
+# TAR.GZ: accord-le-tools-<version>-<arch>.tar.gz
 package-tar:
-	@mkdir -p $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)
+	@mkdir -p $(DIST_DIR)/tmp/acle-tools-$(MODULE_VERSION)
 	@for tool in $(ACLE_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi; \
+		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(DIST_DIR)/tmp/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
 	@for tool in $(EXTRA_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi; \
+		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(DIST_DIR)/tmp/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
-	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi
-	@mkdir -p $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts
-	@cp scripts/*.sh $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts/ 2>/dev/null || true
-	@tar -czf $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz \
-		-C $(OUTPUT_DIR)/tar acle-tools-$(MODULE_VERSION)
-	@rm -rf $(OUTPUT_DIR)/tar
-	@echo "✅ Создан: acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz"
+	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(DIST_DIR)/tmp/acle-tools-$(MODULE_VERSION)/; fi
+	@mkdir -p $(DIST_DIR)/tmp/acle-tools-$(MODULE_VERSION)/scripts
+	@cp scripts/*.sh $(DIST_DIR)/tmp/acle-tools-$(MODULE_VERSION)/scripts/ 2>/dev/null || true
+	@tar -czf $(DIST_DIR)/accord-le-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz \
+		-C $(DIST_DIR)/tmp acle-tools-$(MODULE_VERSION)
+	@rm -rf $(DIST_DIR)/tmp
+	@echo "✅ Создан: $(DIST_DIR)/accord-le-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz"
 
 # DEB: acle-tools_<version>_<arch>.deb
 package-deb:
-	@rm -rf $(OUTPUT_DIR)/deb-tools
-	@mkdir -p $(OUTPUT_DIR)/deb-tools/DEBIAN
-	@mkdir -p $(OUTPUT_DIR)/deb-tools/usr/bin
-	@mkdir -p $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts
-	@chmod -R 0755 $(OUTPUT_DIR)/deb-tools/DEBIAN
-	@for tool in $(ACLE_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
-	@for tool in $(EXTRA_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
-	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/deb-tools/usr/bin/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
-	
-	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
+	@rm -rf $(OUTPUT_DIR)/tmp/deb-tools
+	@mkdir -p $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN
+	@mkdir -p $(OUTPUT_DIR)/tmp/deb-tools/usr/bin
+	@mkdir -p $(OUTPUT_DIR)/tmp/deb-tools/usr/share/acle-tools/scripts
+	@chmod -R 0755 $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN
+	@for tool in $(ACLE_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tmp/deb-tools/usr/bin/; fi; done
+	@for tool in $(EXTRA_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tmp/deb-tools/usr/bin/; fi; done
+	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/tmp/deb-tools/usr/bin/; fi
+	@cp scripts/*.sh $(OUTPUT_DIR)/tmp/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true
+	@chmod +x $(OUTPUT_DIR)/tmp/deb-tools/usr/bin/* 2>/dev/null || true
+	@chmod +x $(OUTPUT_DIR)/tmp/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
 
-	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	# Гарантируем, что версия начинается с цифры
-	@mkdir -p $(OUTPUT_DIR)/deb-tools/DEBIAN
-	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "Version: $(shell echo $(MODULE_VERSION) | sed 's/^-/0./')" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "Architecture: $(if $(filter x86_64,$(TARGET_ARCH)),amd64,$(TARGET_ARCH))" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	
-	@echo "Description: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@echo "Depends: zlib1g, perl" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/deb-tools \
-		$(OUTPUT_DIR)/acle-tools_$(MODULE_VERSION)-$(BUILD_NUM)_amd64.deb
-	@rm -rf $(OUTPUT_DIR)/deb-tools
-	@echo "✅ Создан: acle-tools_$(MODULE_VERSION)-$(BUILD_NUM)_amd64.deb"
+	DEB_ARCH=$$(if [ "$(TARGET_ARCH)" = "x86_64" ]; then echo "amd64"; else echo "$(TARGET_ARCH)"; fi); \
+	DEB_VER=$$(echo $(MODULE_VERSION) | sed 's/-/+/g'); \
+	echo "Package: acle-tools" > $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN/control; \
+	echo "Version: $$DEB_VER" >> $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN/control; \
+	echo "Architecture: $$DEB_ARCH" >> $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN/control; \
+	echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN/control; \
+	echo "Description: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN/control; \
+	echo "Depends: zlib1g, perl" >> $(OUTPUT_DIR)/tmp/deb-tools/DEBIAN/control; \
+	dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/tmp/deb-tools \
+		$(PACKAGES_DIR)/acle-tools_$$DEB_VER_$$DEB_ARCH.deb
+	@rm -rf $(OUTPUT_DIR)/tmp/deb-tools
+	@echo "✅ Создан: $(PACKAGES_DIR)/acle-tools_$$DEB_VER_$$DEB_ARCH.deb"
 
 # RPM: acle-tools-<version>.<arch>.rpm
 package-rpm:
-	@rm -rf $(OUTPUT_DIR)/rpm-tools
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/BUILD
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/RPMS
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SOURCES
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SPECS
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SRPMS
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/BUILDROOT
-	@mkdir -p $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)
+	@rm -rf $(OUTPUT_DIR)/tmp/rpm-tools
+	@mkdir -p $(OUTPUT_DIR)/tmp/rpm-tools/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
+	@mkdir -p $(OUTPUT_DIR)/tmp/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)
 	
 	@for tool in $(ACLE_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
+		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tmp/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
 	@for tool in $(EXTRA_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
+		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/tmp/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
-	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/ 2>/dev/null || true
+	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/tmp/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi
+	@cp scripts/*.sh $(OUTPUT_DIR)/tmp/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/ 2>/dev/null || true
 	
-	@echo "Name: acle-tools" > $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Version: $(RPM_VERSION)" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Summary: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "License: Proprietary" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Requires: zlib, perl" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "%description" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "Utilities for AMDZ GX" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "%install" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "mkdir -p %{buildroot}/usr/bin" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "mkdir -p %{buildroot}/usr/share/acle-tools/scripts" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/acle-* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/convert_* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp -r %{_sourcedir}/acle-tools-$(MODULE_VERSION)/scripts/* %{buildroot}/usr/share/acle-tools/scripts/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "%files" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "/usr/bin/acle-*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "/usr/share/acle-tools/*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	RPM_VER=$$(echo $(MODULE_VERSION) | sed 's/-/_/g'); \
+	echo "Name: acle-tools" > $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "Version: $$RPM_VER" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "Summary: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "License: Proprietary" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "Requires: zlib, perl" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "%description" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "Utilities for AMDZ GX" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "%install" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "mkdir -p %{buildroot}/usr/bin" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "mkdir -p %{buildroot}/usr/share/acle-tools/scripts" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/acle-* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/convert_* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "cp -r %{_sourcedir}/acle-tools-$(MODULE_VERSION)/scripts/* %{buildroot}/usr/share/acle-tools/scripts/ 2>/dev/null || true" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "%files" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "/usr/bin/acle-*" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+	echo "/usr/share/acle-tools/*" >> $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec
 	
 	@if command -v rpmbuild >/dev/null 2>&1; then \
-		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-tools" \
-			--define "_sourcedir $(OUTPUT_DIR)/rpm-tools/SOURCES" \
-			-bb $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec; \
-		find $(OUTPUT_DIR)/rpm-tools/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
-		if [ -f $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
-			echo "✅ Создан: acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
+		rpmbuild --define "_topdir $(OUTPUT_DIR)/tmp/rpm-tools" \
+			--define "_sourcedir $(OUTPUT_DIR)/tmp/rpm-tools/SOURCES" \
+			-bb $(OUTPUT_DIR)/tmp/rpm-tools/SPECS/acle-tools.spec; \
+		find $(OUTPUT_DIR)/tmp/rpm-tools/RPMS -name "*.rpm" -exec cp {} $(PACKAGES_DIR)/acle-tools-$$RPM_VER.$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
+		if ls $(PACKAGES_DIR)/acle-tools-$$RPM_VER.$(TARGET_ARCH).rpm 1> /dev/null 2>&1; then \
+			echo "✅ Создан: $(PACKAGES_DIR)/acle-tools-$$RPM_VER.$(TARGET_ARCH).rpm"; \
 		else \
 			echo "⚠️ RPM пакет не найден"; \
 		fi \
 	else \
 		echo "⚠️ rpmbuild не установлен. Пропускаем RPM."; \
 	fi
-	@rm -rf $(OUTPUT_DIR)/rpm-tools
+	@rm -rf $(OUTPUT_DIR)/tmp/rpm-tools

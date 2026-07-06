@@ -21,8 +21,8 @@ TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null || 
 TARGET_ARCH    ?= $(shell uname -m)
 
 # Директория для артефактов (ТЗ п. 6.1)
-OUTPUT_DIR     ?= $(CURDIR)/build
 
+OUTPUT_DIR     ?= $(CURDIR)/build
 DIST_DIR       ?= $(OUTPUT_DIR)/dist
 PACKAGES_DIR   ?= $(OUTPUT_DIR)/packages
 TESTS_DIR      ?= $(OUTPUT_DIR)/tests
@@ -30,12 +30,14 @@ CI_DIR         ?= $(OUTPUT_DIR)/ci
 
 KERNEL_HEADERS_AVAILABLE := $(shell test -d $(KERNEL_HEADERS) && echo "yes" || echo "no")
 
+$(shell mkdir -p $(DIST_DIR) $(PACKAGES_DIR) $(TESTS_DIR) $(CI_DIR))
+
 
 # Экспорт переменных для под-Makefile'ов
 export KERNEL_HEADERS KERNEL_VERSION KERNEL_CONFIG
 export MODULE_VERSION BUILD_NUM
 export TARGET_OS TARGET_ARCH OUTPUT_DIR
-export DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR KERNEL_HEADERS_AVAILABLE
+export DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR
 
 # ==========================================
 # Цели (ТЗ п. 3.2)
