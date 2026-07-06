@@ -154,20 +154,12 @@ package-deb:
 
 	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	# Гарантируем, что версия начинается с цифры
-	@if echo "$(MODULE_VERSION)" | grep -q '^-'; then \
-		echo "Version: 0$(MODULE_VERSION)" >> /builds/root/33/build/deb-driver/DEBIAN/control; \
-	else \
-		echo "Version: $(MODULE_VERSION)" >> /builds/root/33/build/deb-driver/DEBIAN/control; \
-	fi
-	@cat $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	@rm $(OUTPUT_DIR)/deb-tools/DEBIAN/control.tmp
-
-	@if [ "$(TARGET_ARCH)" = "x86_64" ]; then \
-		echo "Architecture: amd64" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control; \
-	else \
-		echo "Architecture: $(TARGET_ARCH)" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control; \
-	fi
+	@mkdir -p $(OUTPUT_DIR)/deb-tools/DEBIAN
+	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
+	@echo "Version: $(shell echo $(MODULE_VERSION) | sed 's/^-/0./')" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
+	@echo "Architecture: $(if $(filter x86_64,$(TARGET_ARCH)),amd64,$(TARGET_ARCH))" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
+	
 	@echo "Description: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@echo "Depends: zlib1g, perl" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/deb-tools \
