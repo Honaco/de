@@ -12,7 +12,9 @@ KERNEL_CONFIG  ?= /boot/config-$(KERNEL_RELEASE)
 GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
 GIT_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_NUM  ?= 1
-MODULE_VERSION ?= $(GIT_TAG)-build$(BUILD_NUM)-g$(GIT_HASH)
+# Если GIT_TAG начинается не с цифры, принудительно ставим 0
+RAW_VERSION := $(GIT_TAG)-build$(BUILD_NUM)-g$(GIT_HASH)
+MODULE_VERSION := $(shell echo $(RAW_VERSION) | sed -E 's/^([^0-9])/0.\1/')
 
 # Целевая платформа
 TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null || echo "debian")
