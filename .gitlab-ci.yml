@@ -14,6 +14,7 @@ variables:
 # Шаблон окружения для минимизации дублирования конфигурации (ТЗ п. 4.2, п. 9)
 .env_template:
   before_script:
+    - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -yqq
     - apt-get install -yqq build-essential sudo git linux-headers-generic rpm kmod udev
 
