@@ -30,14 +30,13 @@ CI_DIR         ?= $(OUTPUT_DIR)/ci
 
 KERNEL_HEADERS_AVAILABLE := $(shell test -d $(KERNEL_HEADERS) && echo "yes" || echo "no")
 
-$(shell mkdir -p $(DIST_DIR) $(PACKAGES_DIR) $(TESTS_DIR) $(CI_DIR))
 
 
 # Экспорт переменных для под-Makefile'ов
 export KERNEL_HEADERS KERNEL_VERSION KERNEL_CONFIG
 export MODULE_VERSION BUILD_NUM
 export TARGET_OS TARGET_ARCH OUTPUT_DIR
-export DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR
+export DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR KERNEL_HEADERS_AVAILABLE
 
 # ==========================================
 # Цели (ТЗ п. 3.2)
@@ -117,11 +116,13 @@ ci-build:
 ci-package:
 	@echo "📦 Сборка пакетов (CI)..."
 	@mkdir -p $(PACKAGES_DIR)
-	# Предполагаем, что внутри driver/ и tools/ есть цели package
 	$(MAKE) -C driver package
 	$(MAKE) -C tools package
-	@echo "✅ Пакеты собраны в $(PACKAGES_DIR)"
+	@# Переносим созданные пакеты в предназначенную для них директорию согласно ТЗ
+	@mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/ 2>/dev/null || true
+	@echo "✅ Пакеты сохранены в $(PACKAGES_DIR)"
 	@ls -lh $(PACKAGES_DIR)
+	
 
 ci-test:
 	@echo "🧪 CI тестирование..."

@@ -79,7 +79,6 @@ test:
 	@echo "✅ Тесты драйвера пройдены"
 
 # ===== Упаковка (ТЗ п. 5, 6.2) =====
-# ===== Упаковка (ТЗ п. 5, 6.1, 6.2) =====
 package: package-tar package-deb package-rpm
 
 # TAR.GZ: accord-le-<version>-<kernel>.tar.gz
@@ -88,15 +87,15 @@ package-tar:
 		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
 		exit 1; \
 	fi
-	@mkdir -p $(DIST_DIR)/tmp/accord-le-$(MODULE_VERSION)
-	cp accord-le.ko $(DIST_DIR)/tmp/accord-le-$(MODULE_VERSION)/
+	@mkdir -p $(OUTPUT_DIR)/tar/accord-le-$(MODULE_VERSION)
+	cp accord-le.ko $(OUTPUT_DIR)/tar/accord-le-$(MODULE_VERSION)/
 	@if [ -f 99-accord-le.rules ]; then \
-		cp 99-accord-le.rules $(DIST_DIR)/tmp/accord-le-$(MODULE_VERSION)/; \
+		cp 99-accord-le.rules $(OUTPUT_DIR)/tar/accord-le-$(MODULE_VERSION)/; \
 	fi
-	tar -czf $(DIST_DIR)/accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz \
-		-C $(DIST_DIR)/tmp accord-le-$(MODULE_VERSION)
-	rm -rf $(DIST_DIR)/tmp
-	@echo "✅ Создан: $(DIST_DIR)/accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz"
+	tar -czf $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz \
+		-C $(OUTPUT_DIR)/tar accord-le-$(MODULE_VERSION)
+	rm -rf $(OUTPUT_DIR)/tar
+	@echo "✅ Создан: accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz"
 
 # DEB: accord-le_<version>_<arch>.deb
 package-deb:
@@ -104,89 +103,94 @@ package-deb:
 		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
 		exit 1; \
 	fi
-	@rm -rf $(OUTPUT_DIR)/tmp/deb-driver
-	@mkdir -p $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN
-	@mkdir -p $(OUTPUT_DIR)/tmp/deb-driver/lib/modules/$(KERNEL_RELEASE)/extra
-	@mkdir -p $(OUTPUT_DIR)/tmp/deb-driver/etc/udev/rules.d
-	@chmod 0755 $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN
-	@chmod 0755 $(OUTPUT_DIR)/tmp/deb-driver
-	cp accord-le.ko $(OUTPUT_DIR)/tmp/deb-driver/lib/modules/$(KERNEL_RELEASE)/extra/
+	@rm -rf $(OUTPUT_DIR)/deb-driver
+	@mkdir -p $(OUTPUT_DIR)/deb-driver/DEBIAN
+	@mkdir -p $(OUTPUT_DIR)/deb-driver/lib/modules/$(KERNEL_RELEASE)/extra
+	@mkdir -p $(OUTPUT_DIR)/deb-driver/etc/udev/rules.d
+	@chmod 0755 $(OUTPUT_DIR)/deb-driver/DEBIAN
+	@chmod 0755 $(OUTPUT_DIR)/deb-driver
+	cp accord-le.ko $(OUTPUT_DIR)/deb-driver/lib/modules/$(KERNEL_RELEASE)/extra/
 	@if [ -f 99-accord-le.rules ]; then \
-		cp 99-accord-le.rules $(OUTPUT_DIR)/tmp/deb-driver/etc/udev/rules.d/; \
+		cp 99-accord-le.rules $(OUTPUT_DIR)/deb-driver/etc/udev/rules.d/; \
 	fi
 	DEB_ARCH=$$(if [ "$(TARGET_ARCH)" = "x86_64" ]; then echo "amd64"; else echo "$(TARGET_ARCH)"; fi); \
-	# В DEB версия не может содержать дефисы без указания debian revision, заменяем на '+'
-	DEB_VER=$$(echo $(MODULE_VERSION) | sed 's/-/+/g'); \
-	echo "Package: accord-le-driver" > $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	echo "Version: $$DEB_VER" >> $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	echo "Architecture: $$DEB_ARCH" >> $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	echo "Description: Accord-LE Driver for $(TARGET_OS)" >> $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	echo "Depends: kmod, udev" >> $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	chmod 0644 $(OUTPUT_DIR)/tmp/deb-driver/DEBIAN/control; \
-	dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/tmp/deb-driver \
-		$(PACKAGES_DIR)/accord-le_$$DEB_VER_$$DEB_ARCH.deb
-	@rm -rf $(OUTPUT_DIR)/tmp/deb-driver
-	@echo "✅ Создан: $(PACKAGES_DIR)/accord-le_$$DEB_VER_$$DEB_ARCH.deb"
+	echo "Package: accord-le-driver" > $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	echo "Version: $(MODULE_VERSION)" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	echo "Architecture: $$DEB_ARCH" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	echo "Description: Accord-LE Driver for $(TARGET_OS)" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	echo "Depends: kmod, udev" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	chmod 0644 $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/deb-driver \
+		$(OUTPUT_DIR)/accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb
+	@rm -rf $(OUTPUT_DIR)/deb-driver
+	@echo "✅ Создан: accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb"
 
+# RPM: accord-le-<version>.<arch>.rpm
 # RPM: accord-le-<version>.<arch>.rpm
 package-rpm:
 	@if [ ! -f accord-le.ko ]; then \
 		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
 		exit 1; \
 	fi
-	@rm -rf $(OUTPUT_DIR)/tmp/rpm-driver
-	@mkdir -p $(OUTPUT_DIR)/tmp/rpm-driver/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
-	@mkdir -p $(OUTPUT_DIR)/tmp/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)
+	@rm -rf $(OUTPUT_DIR)/rpm-driver
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/BUILD
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/RPMS
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/SOURCES
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/SPECS
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/SRPMS
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/BUILDROOT
+	@mkdir -p $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)
 	
-	cp accord-le.ko $(OUTPUT_DIR)/tmp/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/
+	# Копируем файлы в SOURCES
+	cp accord-le.ko $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/
 	@if [ -f 99-accord-le.rules ]; then \
-		cp 99-accord-le.rules $(OUTPUT_DIR)/tmp/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/; \
+		cp 99-accord-le.rules $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/; \
 	fi
 	
-	# В RPM Version не может содержать дефисы
+	# RPM версия (без дефисов)
 	RPM_VER=$$(echo $(MODULE_VERSION) | sed 's/-/_/g'); \
-	echo "Name: accord-le-driver" > $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "Version: $$RPM_VER" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "Summary: Accord-LE Driver" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "License: Proprietary" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "Group: System Environment/Kernel" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "%description" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "Accord-LE Driver for $(TARGET_OS)" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "%install" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "mkdir -p %{buildroot}/lib/modules/$(KERNEL_RELEASE)/extra" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "mkdir -p %{buildroot}/etc/udev/rules.d" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/accord-le.ko %{buildroot}/lib/modules/$(KERNEL_RELEASE)/extra/" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/99-accord-le.rules %{buildroot}/etc/udev/rules.d/ 2>/dev/null || true" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "%files" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "/lib/modules/$(KERNEL_RELEASE)/extra/accord-le.ko" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "/etc/udev/rules.d/99-accord-le.rules" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "%post" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "if [ -f /etc/udev/rules.d/99-accord-le.rules ]; then" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "  udevadm control --reload-rules && udevadm trigger" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "fi" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "%preun" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "rm -f /lib/modules/$(KERNEL_RELEASE)/extra/accord-le.ko" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-	echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec
+	echo "Name: accord-le-driver" > $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "Version: $$RPM_VER" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "Summary: Accord-LE Driver" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "License: Proprietary" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "Group: System Environment/Kernel" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "%description" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "Accord-LE Driver for $(TARGET_OS)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "%install" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "mkdir -p %{buildroot}/lib/modules/$(KERNEL_RELEASE)/extra" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "mkdir -p %{buildroot}/etc/udev/rules.d" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/accord-le.ko %{buildroot}/lib/modules/$(KERNEL_RELEASE)/extra/" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/99-accord-le.rules %{buildroot}/etc/udev/rules.d/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "%files" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "/lib/modules/$(KERNEL_RELEASE)/extra/accord-le.ko" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "/etc/udev/rules.d/99-accord-le.rules" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "%post" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "if [ -f /etc/udev/rules.d/99-accord-le.rules ]; then" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "  udevadm control --reload-rules && udevadm trigger" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "fi" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "%preun" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "rm -f /lib/modules/$(KERNEL_RELEASE)/extra/accord-le.ko" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec
 	
 	@if command -v rpmbuild >/dev/null 2>&1; then \
-		rpmbuild --define "_topdir $(OUTPUT_DIR)/tmp/rpm-driver" \
-			--define "_sourcedir $(OUTPUT_DIR)/tmp/rpm-driver/SOURCES" \
-			-bb $(OUTPUT_DIR)/tmp/rpm-driver/SPECS/accord-le.spec; \
-		find $(OUTPUT_DIR)/tmp/rpm-driver/RPMS -name "*.rpm" -exec cp {} $(PACKAGES_DIR)/accord-le-$$RPM_VER.$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
-		if ls $(PACKAGES_DIR)/accord-le-$$RPM_VER.$(TARGET_ARCH).rpm 1> /dev/null 2>&1; then \
-			echo "✅ Создан: $(PACKAGES_DIR)/accord-le-$$RPM_VER.$(TARGET_ARCH).rpm"; \
+		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-driver" \
+			--define "_sourcedir $(OUTPUT_DIR)/rpm-driver/SOURCES" \
+			-bb $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+		find $(OUTPUT_DIR)/rpm-driver/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
+		if [ -f $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
+			echo "✅ Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
 		else \
 			echo "⚠️ RPM пакет не найден"; \
 		fi \
 	else \
 		echo "⚠️ rpmbuild не установлен. Пропускаем RPM."; \
 	fi
-	@rm -rf $(OUTPUT_DIR)/tmp/rpm-driver
+	@rm -rf $(OUTPUT_DIR)/rpm-driver

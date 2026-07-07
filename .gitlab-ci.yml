@@ -1,7 +1,6 @@
 stages:
   - build
   - package
-  - test
 
 variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
@@ -14,19 +13,27 @@ variables:
       - export TARGET_ARCH=$(uname -m)
       - export TARGET_OS=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"' || echo "debian")
       - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-*-generic 2>/dev/null | head -n 1 || ls -d /usr/src/linux-headers-* 2>/dev/null | grep -v "common" | head -n 1)
+      
       - export KERNEL_HEADERS="$KERNEL_HEADERS_DIR"
+      - export TARGET_OS="$TARGET_OS"
+      - export TARGET_ARCH="$TARGET_ARCH"
+      - export MODULE_VERSION="$MODULE_VERSION"
+      - export BUILD_NUM="$BUILD_NUM"
+      - export OUTPUT_DIR="$OUTPUT_DIR"
+      
       - make ci-build
   artifacts:
-    name: "accord-le-build-$CI_JOB_NAME-$CI_PIPELINE_IID"
+    name: "accord-le-$CI_JOB_NAME-$CI_PIPELINE_IID"
     paths:
-      - build/dist/
-      - build/packages/
+      - build/
+      - driver/       # Передаем состояние папки драйвера для этапа package
+      - tools/        # Передаем скомпилированные утилиты, чтобы пакеты не были пустыми
     expire_in: 1 week
-
+  
 .env_template:
   before_script:
     - apt-get update -yqq
-    - apt-get install -yqq build-essential sudo git linux-headers-generic dpkg-dev rpm
+    - apt-get install -yqq build-essential sudo git linux-headers-generic rpm
 
 # Матрица сборки для разных дистрибутивов
 build:matrix:
@@ -37,16 +44,15 @@ build:matrix:
   image: $OS_IMAGE
   before_script:
     - apt-get update -yqq
+    # Ставим sudo (он нужен твоим под-макефайлам) и заголовки
     - apt-get install -yqq build-essential sudo git linux-headers-generic
     
-# --- Этап PACKAGE ---
 package:
   extends: .env_template
   stage: package
   image: ubuntu:22.04
   script:
-    # Восстанавливаем артефакты из build/dist, если они нужны для упаковки (например .ko)
-    - cp build/dist/accord-le.ko driver/ 2>/dev/null || echo "Файл уже на месте или отсутствует"
+    # Теперь ci-package сам всё найдёт в driver/ и tools/ и разложит по местам
     - make ci-package
   needs:
     - job: build:matrix
@@ -54,6 +60,5 @@ package:
   artifacts:
     name: "accord-le-packages-$CI_PIPELINE_IID"
     paths:
-      - build/dist/
       - build/packages/
     expire_in: 2 weeks
