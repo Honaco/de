@@ -114,14 +114,15 @@ ci-build:
 	@ls -lh $(OUTPUT_DIR)
 
 ci-package:
-	@echo "📦 Сборка пакетов (CI)..."
-	@mkdir -p $(PACKAGES_DIR)
+	@echo "📦 Сборка пакетов (CI) для платформы $(TARGET_OS)..."
+	@# Создаем структуру согласно ТЗ п. 6.1 с изоляцией дистрибутивов
+	@mkdir -p $(PACKAGES_DIR)/$(TARGET_OS)
 	$(MAKE) -C driver package
 	$(MAKE) -C tools package
-	@# Переносим созданные пакеты в предназначенную для них директорию согласно ТЗ
-	@mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/ 2>/dev/null || true
-	@echo "✅ Пакеты сохранены в $(PACKAGES_DIR)"
-	@ls -lh $(PACKAGES_DIR)
+	@# Переносим созданные пакеты в изолированную поддиректорию
+	@mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/$(TARGET_OS)/ 2>/dev/null || true
+	@echo "✅ Пакеты для $(TARGET_OS) успешно собраны в $(PACKAGES_DIR)/$(TARGET_OS)"
+	@ls -lh $(PACKAGES_DIR)/$(TARGET_OS)
 	
 
 ci-test:
