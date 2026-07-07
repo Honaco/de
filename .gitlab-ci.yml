@@ -118,6 +118,7 @@ release-artifacts:
     - ls -R build/packages/
   needs:
     - job: test:matrix
+    - job: package:matrix
       artifacts: true
   artifacts:
     name: "accord-le-final-dist-$CI_PIPELINE_IID"
