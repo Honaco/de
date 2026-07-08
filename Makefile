@@ -11,9 +11,9 @@ KERNEL_CONFIG  ?= /boot/config-$(KERNEL_RELEASE)
 # Версионирование (ТЗ п. 7: tag-buildN-ghash)
 GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
 GIT_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_NUM  ?= 1
+BUILD_NUMBER  ?= 1
 # Если GIT_TAG начинается не с цифры, принудительно ставим 0
-RAW_VERSION := $(GIT_TAG)-build$(BUILD_NUM)-g$(GIT_HASH)
+RAW_VERSION := $(GIT_TAG)-build$(BUILD_NUMBER)-g$(GIT_HASH)
 MODULE_VERSION := $(shell echo $(RAW_VERSION) | sed -E 's/^([^0-9])/0.\1/')
 
 # Целевая платформа
@@ -34,7 +34,7 @@ KERNEL_HEADERS_AVAILABLE := $(shell test -d $(KERNEL_HEADERS) && echo "yes" || e
 
 # Экспорт переменных для под-Makefile'ов
 export KERNEL_HEADERS KERNEL_VERSION KERNEL_CONFIG
-export MODULE_VERSION BUILD_NUM
+export MODULE_VERSION BUILD_NUMBER
 export TARGET_OS TARGET_ARCH OUTPUT_DIR
 export DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR KERNEL_HEADERS_AVAILABLE
 
@@ -149,7 +149,7 @@ help:
 	@echo "Параметры:"
 	@echo "  KERNEL_HEADERS=/path  - Путь к заголовкам ядра"
 	@echo "  MODULE_VERSION=2.1.0  - Версия модуля"
-	@echo "  BUILD_NUM=15          - Номер сборки"
+	@echo "  BUILD_NUMBER=15          - Номер сборки"
 	@echo "  OUTPUT_DIR=/path      - Директория артефактов"
 	@echo ""
 	@echo "Пример:"
