@@ -14,7 +14,16 @@ variables:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -yqq
-    - apt-get install -yqq build-essential sudo git linux-headers-generic rpm rpm-build kmod udev
+    - apt-get install -yqq build-essential sudo git linux-headers-$(uname -r) rpm kmod udev
+    # Подготовка kernel headers
+    - KERNEL_DIR=/usr/src/linux-headers-$(uname -r)
+    - if [ -d "$KERNEL_DIR" ]; then
+        cd $KERNEL_DIR;
+        make -s olddefconfig;
+        make -s prepare;
+        make -s modules_prepare;
+        cd -;
+      fi
 
 validate-build-system:
   extends: .env_template
