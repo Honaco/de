@@ -99,7 +99,7 @@ test:matrix:
     # 1. Установка пакета и динамическое определение его имени
     - if [ -n "$DEB_FILE" ]; then
         echo "📥 Установка DEB: $DEB_FILE";
-        dpkg -i $DEB_FILE || true;
+        dpkg -i $DEB_FILE;
         apt-get install -f -y;
         PKG_NAME=$(dpkg-deb -f $DEB_FILE Package);
       elif [ -n "$RPM_FILE" ]; then
@@ -120,19 +120,19 @@ test:matrix:
     - echo "Файл модуля найден: $KO_FILE"
     
     # Пытаемся загрузить. В Docker без privileged режима это упадет (что нормально), поэтому перехватываем ошибку
-    - insmod $KO_FILE || echo "⚠️ Не удалось загрузить модуль. Возможно, у Runner-а нет привилегий."
+    - insmod $KO_FILE
 
     # 3. Проверка загрузки
     - echo "✅ Проверка загрузки модуля..."
-    - lsmod | grep accord-le || echo "⚠️ Модуль не в памяти ядра."
+    - lsmod | grep accord-le
 
     # 4. Выгрузка и удаление (используем реальное имя пакета)
     - echo "🗑️ Выгрузка драйвера и удаление пакета..."
-    - rmmod accord-le || true
+    - rmmod accord-le
     - if [ -n "$DEB_FILE" ]; then
-        apt-get remove -y $PKG_NAME || true;
+        apt-get remove -y $PKG_NAME;
       elif [ -n "$RPM_FILE" ]; then
-        rpm -e $PKG_NAME || true;
+        rpm -e $PKG_NAME;
       fi
 
     - echo "✅ Тесты для $TARGET_OS пройдены!"
