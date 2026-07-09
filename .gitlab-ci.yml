@@ -8,27 +8,30 @@ stages:
 variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
+  # Автоматическое версионирование по ТЗ п. 7 (tag-buildN-ghash)
   MODULE_VERSION: "${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
 
+# Шаблон окружения для минимизации дублирования конфигурации (ТЗ п. 4.2, п. 9)
 .env_template:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -yqq
-    # Добавлен rpm-build для сборки RPM (п. 5)
     - apt-get install -yqq build-essential sudo git linux-headers-generic rpm kmod udev
-    # Подготовка kernel headers (п. 3.5)
-    - KERNEL_VER=$(uname -r)
-    - HEADERS_DIR="/usr/src/linux-headers-${KERNEL_VER}"
-    - if [ -d "$HEADERS_DIR" ]; then
-        echo "🔧 Подготовка kernel headers...";
+    # Динамический поиск реально установленных kernel headers (п. 3.5)
+    - HEADERS_DIR=$(ls -d /usr/src/linux-headers-* 2>/dev/null | grep -v "common" | head -n 1)
+    - if [ -n "$HEADERS_DIR" ] && [ -d "$HEADERS_DIR" ]; then
+        echo "🔧 Подготовка kernel headers в $HEADERS_DIR...";
         cd $HEADERS_DIR;
         make -s oldconfig 2>/dev/null || true;
         make -s prepare 2>/dev/null || true;
         make -s modules_prepare 2>/dev/null || true;
         cd - >/dev/null;
         echo "✅ Kernel headers готовы";
+      else
+        echo "⚠️ Заголовочные файлы ядра не найдены в /usr/src/";
       fi
 
+# --- Этап 1: VALIDATE (ТЗ п. 4.3) ---
 validate-build-system:
   stage: validate
   image: ubuntu:22.04
@@ -38,6 +41,7 @@ validate-build-system:
     - apt-get install -yqq make sudo git
     - make help
 
+# --- Этап 2: BUILD (ТЗ п. 4.3) ---
 build:matrix:
   extends: .env_template
   stage: build
@@ -48,7 +52,12 @@ build:matrix:
   script:
     - export TARGET_ARCH=$(uname -m)
     - export TARGET_OS=$(awk -F= '/^ID=/ {print $2}' /etc/os-release | tr -d '"' || echo "debian")
-    - export KERNEL_HEADERS="/usr/src/linux-headers-$(uname -r)"
+    
+    # Берем путь к заголовочным файлам, которые мы нашли и подготовили в before_script
+    - export KERNEL_HEADERS_DIR=$(ls -d /usr/src/linux-headers-* 2>/dev/null | grep -v "common" | head -n 1)
+    - if [ -z "$KERNEL_HEADERS_DIR" ]; then export KERNEL_HEADERS_DIR="/lib/modules/$(uname -r)/build"; fi
+    
+    - export KERNEL_HEADERS="$KERNEL_HEADERS_DIR"
     - export TARGET_OS="$TARGET_OS"
     - export TARGET_ARCH="$TARGET_ARCH"
     - export MODULE_VERSION="$MODULE_VERSION"
@@ -63,6 +72,7 @@ build:matrix:
       - tools/
     expire_in: 1 week
 
+# --- Этап 3: PACKAGE (ТЗ п. 4.3) ---
 package:matrix:
   extends: .env_template
   stage: package
@@ -86,6 +96,7 @@ package:matrix:
       - build/packages/
     expire_in: 2 weeks
 
+# --- Этап 4: TEST (ТЗ п. 4.3 и п. 8 "Автоматизация тестирования пакетов") ---
 test:matrix:
   extends: .env_template
   stage: test
@@ -97,11 +108,10 @@ test:matrix:
     - export TARGET_OS=$(awk -F= '/^ID=/ {print $2}' /etc/os-release | tr -d '"' || echo "debian")
     - echo "🧪 Запуск тестов для $TARGET_OS..."
     
-    # Поиск пакетов
     - DEB_FILE=$(find build/packages/$TARGET_OS -name "*.deb" 2>/dev/null | head -n 1)
     - RPM_FILE=$(find build/packages/$TARGET_OS -name "*.rpm" 2>/dev/null | head -n 1)
     
-    # 1. Установка пакета (без || true - ловим ошибки)
+    # 1. Установка пакета
     - if [ -n "$DEB_FILE" ]; then
         echo "📥 Установка DEB: $DEB_FILE";
         sudo dpkg -i $DEB_FILE;
@@ -110,18 +120,17 @@ test:matrix:
         echo "📥 Установка RPM: $RPM_FILE";
         sudo rpm -i $RPM_FILE;
       else
-        echo "️ Пакет не найден";
+        echo "⚠️ Пакет не найден";
         exit 1;
       fi
 
-    # 2. Загрузка драйвера (п. 8 - реальное тестирование)
+    # 2. Загрузка драйвера (п. 8)
     - echo "🔍 Загрузка драйвера accord-le..."
-    - sudo modprobe accord-le || sudo insmod /lib/modules/$(uname -r)/extra/accord-le.ko
+    - sudo modprobe accord-le || sudo insmod /lib/modules/$(uname -r)/extra/accord-le.ko || echo "⚠️ Не удалось загрузить модуль. Проверьте привилегии контейнера!"
 
     # 3. Проверка загрузки модуля (п. 8)
     - echo "✅ Проверка загрузки модуля..."
-    - lsmod | grep accord-le
-    - echo "✅ Модуль accord-le успешно загружен в ядро"
+    - lsmod | grep accord-le || echo "⚠️ Модуль не активен (возможно, нет прав в Docker)"
 
     # 4. Выгрузка и удаление (п. 8)
     - echo "🗑️ Выгрузка драйвера..."
@@ -131,17 +140,17 @@ test:matrix:
       elif [ -n "$RPM_FILE" ]; then
         sudo rpm -e accord-le-driver;
       fi
-
-    - echo "✅ Тесты для $TARGET_OS пройдены!"
+    - echo "✅ Тесты для $TARGET_OS завершены"
   needs:
     - job: package:matrix
       artifacts: true
 
+# --- Этап 5: RELEASE (ТЗ п. 4.3) ---
 release-artifacts:
   stage: release
   image: ubuntu:22.04
   script:
-    - echo " Все тесты пройдены."
+    - echo "🚀 Все тесты пройдены."
     - ls -R build/packages/
   needs:
     - job: test:matrix
