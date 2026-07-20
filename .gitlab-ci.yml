@@ -77,7 +77,6 @@ build:
     expire_in: 1 week
 
 
-# ... (начало файла без изменений)
 
 package:
   stage: package
@@ -88,12 +87,18 @@ package:
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
     
-    # ИСПРАВЛЕНИЕ: Разрешаем rpmbuild для root (только для CI!)
+    # ИСПРАВЛЕНИЕ: Полная настройка rpmbuild для работы от root
     - if [ "$PKG_EXT" = "rpm" ]; then
-        echo " Настройка rpmbuild для работы от root...";
+        echo "🔧 Настройка rpmbuild для работы от root...";
         echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros;
         echo "%_tmppath /tmp" >> ~/.rpmmacros;
         echo "%__spec_install_post %{nil}" >> ~/.rpmmacros;
+        echo "%_source_filedigest_algorithm 0" >> ~/.rpmmacros;
+        echo "%_binary_filedigest_algorithm 0" >> ~/.rpmmacros;
+        echo "%_build_id_links none" >> ~/.rpmmacros;
+        echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
+        cat ~/.rpmmacros;
+        echo "✅ rpmmacros настроен";
       fi
     
     # Передаем корректно сформированную версию в Makefile папки driver
@@ -109,7 +114,10 @@ package:
     paths:
       - build/packages/
     expire_in: 2 weeks
+
+
     
+
 
 test:
   stage: test
