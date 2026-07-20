@@ -9,30 +9,45 @@ variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
   MODULE_VERSION: "${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
-  OS_IMAGE: "debian:12" # Фиксируем ОС для чистоты эксперимента
 
+# Шаблон матрицы для многоплатформенной сборки
+.os_matrix:
+  parallel:
+    matrix:
+      - OS_NAME: "debian"
+        OS_IMAGE: "debian:12"
+        HEADERS_PKG: "linux-headers-amd64"
+      - OS_NAME: "ubuntu"
+        OS_IMAGE: "ubuntu:20.04"
+        HEADERS_PKG: "linux-headers-generic"
+
+# Шаблон окружения (динамически подставляет переменные из матрицы)
 .env_template:
   image: $OS_IMAGE
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -yqq
-    - apt-get install -yqq build-essential sudo git linux-headers-amd64 rpm kmod udev
+    - apt-get install -yqq build-essential sudo git $HEADERS_PKG rpm kmod udev
 
 validate-build-system:
   stage: validate
-  extends: .env_template
+  extends: 
+    - .env_template
+    - .os_matrix
   script:
     - apt-get install -yqq make
     - make help
 
 build:
   stage: build
-  extends: .env_template
+  extends: 
+    - .env_template
+    - .os_matrix
   script:
-    # Динамически находим симлинк build, который создал пакет linux-headers внутри контейнера
+    # Динамически находим симлинк build внутри контейнера конкретной ОС
     - export KERNEL_HEADERS=$(find /lib/modules -type l -name build | head -n 1)
-    - echo "Используем заголовки ядра по пути: $KERNEL_HEADERS"
-    - export TARGET_OS="debian"
+    - echo "Используем заголовки ядра по пути $KERNEL_HEADERS для $OS_NAME"
+    - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
     - make ci-build
   artifacts:
@@ -44,10 +59,15 @@ build:
 
 package:
   stage: package
-  extends: .env_template
+  extends: 
+    - .env_template
+    - .os_matrix
   script:
-    - export TARGET_OS="debian"
+    - export TARGET_OS="$OS_NAME"
     - make ci-package
+    # Складываем артефакты в подпапку с именем ОС, чтобы избежать коллизии имен при сборке общего релиза
+    - mkdir -p build/packages/$OS_NAME
+    - mv build/packages/*.deb build/packages/$OS_NAME/ 2>/dev/null || true
   needs:
     - job: build
       artifacts: true
@@ -58,36 +78,41 @@ package:
 
 test:
   stage: test
-  extends: .env_template
-  # Убираем tags, так как теперь тест выполняется в стандартном Docker-раннере
+  extends: 
+    - .env_template
+    - .os_matrix
   script:
-    - export TARGET_OS="debian"
-    # 1. Поиск пакета
-    - DEB_FILE=$(find build/packages -name "*.deb" | head -n 1)
+    - export TARGET_OS="$OS_NAME"
+    
+    # 1. Поиск пакета в изолированной папке операционной системы
+    - DEB_FILE=$(find build/packages/$OS_NAME -name "*.deb" | head -n 1)
     - "[ -z \"$DEB_FILE\" ] && exit 1"
     
-    # 2. Установка в "сухом режиме" (или проверка установки)
-    # Используем --dry-run или просто распаковку, чтобы проверить корректность состава пакета
-    - echo "🔍 Проверка целостности пакета..."
+    # 2. Установка в "сухом режиме"
+    - echo "🔍 Проверка целостности пакета для $OS_NAME..."
     - dpkg-deb -I $DEB_FILE
     - dpkg-deb -c $DEB_FILE
     
-    # 3. Валидация модуля (вместо insmod)
-    # Проверяем, что модуль скомпилирован и имеет корректную сигнатуру
+    # 3. Валидация модуля (наш знакомый modinfo)
     - KO_FILE=$(find build/ -name "accord-le.ko" | head -n 1)
-    - echo "🔍 Проверка метаданных драйвера..."
+    - echo "🔍 Проверка метаданных драйвера под $OS_NAME..."
     - modinfo $KO_FILE | grep -q "vermagic"
     
-    # 4. Проверка того, что пакет может быть установлен (симуляция)
+    # 4. Тестовая установка пакета в текущее окружение ОС
     - apt-get install -fy ./$DEB_FILE
     
-    - echo "✅ Пакет прошел валидацию и готов к развертыванию!"
+    - echo "✅ Пакет под $OS_NAME успешно прошел все проверки!"
+  needs:
+    - job: package
+      artifacts: true
 
 release-artifacts:
   stage: release
-  extends: .env_template
+  image: "debian:12" # Для финальной стадии берем фиксированный легковесный образ
   script:
-    - echo "🚀 Релиз готов"
+    - echo "🚀 Все пакеты успешно собраны и протестированы!"
+    - echo "Список готовых файлов:"
+    - find build/packages/ -type f
   needs:
     - job: test
     - job: package
