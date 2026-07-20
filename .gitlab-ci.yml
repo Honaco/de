@@ -18,6 +18,7 @@ variables:
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
         PKG_EXT: "deb"
+        MAKE_TARGET: "package-deb"
         PKG_INFO_CMD: "dpkg-deb -I"
         PKG_LIST_CMD: "dpkg-deb -c"
         EXTRA_PKGS: ""
@@ -25,6 +26,7 @@ variables:
         OS_IMAGE: "ubuntu:20.04"
         HEADERS_PKG: "linux-headers-generic"
         PKG_EXT: "deb"
+        MAKE_TARGET: "package-deb"
         PKG_INFO_CMD: "dpkg-deb -I"
         PKG_LIST_CMD: "dpkg-deb -c"
         EXTRA_PKGS: ""
@@ -80,10 +82,14 @@ package:
     - .os_matrix
   script:
     - export TARGET_OS="$OS_NAME"
-    - make ci-package
-    # Складываем артефакты в подпапку конкретной ОС, используя динамическое расширение пакета
+    - export TARGET_ARCH=$(uname -m)
+    
+    # ИСПОЛЬЗУЕМ ПЕРЕМЕННУЮ МАТРИЦЫ: вызываем нужный таргет и передаем параметры версии
+    - make $MAKE_TARGET MODULE_VERSION="$MODULE_VERSION" BUILD_NUM="$BUILD_NUMBER"
+    
+    # ИСПРАВЛЕНО: Забираем пакет из build/ и изолируем по папкам ОС
     - mkdir -p build/packages/$OS_NAME
-    - mv build/packages/*.$PKG_EXT build/packages/$OS_NAME/ 2>/dev/null || true
+    - mv build/*.$PKG_EXT build/packages/$OS_NAME/ 2>/dev/null || true
   needs:
     - job: build
       artifacts: true
