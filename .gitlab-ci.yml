@@ -29,7 +29,9 @@ build:
   stage: build
   extends: .env_template
   script:
-    - export KERNEL_HEADERS="/lib/modules/$(uname -r)/build"
+    # Динамически находим симлинк build, который создал пакет linux-headers внутри контейнера
+    - export KERNEL_HEADERS=$(find /lib/modules -type l -name build | head -n 1)
+    - echo "Используем заголовки ядра по пути: $KERNEL_HEADERS"
     - export TARGET_OS="debian"
     - export TARGET_ARCH=$(uname -m)
     - make ci-build
