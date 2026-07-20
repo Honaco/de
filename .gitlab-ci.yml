@@ -10,7 +10,7 @@ variables:
   BUILD_NUMBER: "$CI_PIPELINE_IID"
   MODULE_VERSION: "${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
 
-# Расширенная матрица для сборки (теперь с ALT Linux)
+# Настроенная матрица под конкретные цели вашего Makefile
 .os_matrix:
   parallel:
     matrix:
@@ -18,6 +18,7 @@ variables:
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
         PKG_EXT: "deb"
+        MAKE_TARGET: "package-deb"    # Вызываем только DEB сборку
         PKG_INFO_CMD: "dpkg-deb -I"
         PKG_LIST_CMD: "dpkg-deb -c"
         EXTRA_PKGS: ""
@@ -25,18 +26,19 @@ variables:
         OS_IMAGE: "ubuntu:20.04"
         HEADERS_PKG: "linux-headers-generic"
         PKG_EXT: "deb"
+        MAKE_TARGET: "package-deb"    # Вызываем только DEB сборку
         PKG_INFO_CMD: "dpkg-deb -I"
         PKG_LIST_CMD: "dpkg-deb -c"
         EXTRA_PKGS: ""
       - OS_NAME: "alt"
-        OS_IMAGE: "alt:p10" # Можно заменить на alt:p11 или alt:sisyphus при необходимости
+        OS_IMAGE: "alt:p10"
         HEADERS_PKG: "kernel-headers-modules-std-def"
         PKG_EXT: "rpm"
+        MAKE_TARGET: "package-rpm"    # Вызываем только RPM сборку
         PKG_INFO_CMD: "rpm -qip"
         PKG_LIST_CMD: "rpm -qlp"
-        EXTRA_PKGS: "rpm-build" # Для ALT необходима утилита сборки RPM
-
-# Шаблон окружения
+        EXTRA_PKGS: "rpm-build"       # Необходим для работы rpmbuild
+        
 .env_template:
   image: $OS_IMAGE
   before_script:
@@ -51,7 +53,7 @@ validate-build-system:
     - .os_matrix
   script:
     - apt-get install -yqq make
-    - make help
+    - make test # Используем встроенный в Makefile таргет тестирования структуры
 
 build:
   stage: build
@@ -59,17 +61,18 @@ build:
     - .env_template
     - .os_matrix
   script:
-    # Динамически находим симлинк build внутри контейнера конкретной ОС
     - export KERNEL_HEADERS=$(find /lib/modules -type l -name build | head -n 1)
     - echo "Используем заголовки ядра по пути $KERNEL_HEADERS для $OS_NAME"
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
-    - make ci-build
+    # Передаем переменные окружения для Makefile
+    - make all MODULE_VERSION="$MODULE_VERSION"
   artifacts:
     paths:
       - build/
       - driver/
       - tools/
+      - ./* # Сохраняем корень (там лежит скомпилированный accord-le.ko для тестов)
     expire_in: 1 week
 
 package:
@@ -79,10 +82,13 @@ package:
     - .os_matrix
   script:
     - export TARGET_OS="$OS_NAME"
-    - make ci-package
-    # Складываем артефакты в подпапку конкретной ОС, используя динамическое расширение пакета
+    - export TARGET_ARCH=$(uname -m)
+    # Вызываем строго нужный таргет сборки пакета и передаем ему версию и номер сборки
+    - make $MAKE_TARGET MODULE_VERSION="$MODULE_VERSION" BUILD_NUM="$BUILD_NUMBER"
+    
+    # Так как Makefile кладет пакет прямо в build/, изолируем его в подпапку для артефактов
     - mkdir -p build/packages/$OS_NAME
-    - mv build/packages/*.$PKG_EXT build/packages/$OS_NAME/ 2>/dev/null || true
+    - mv build/*.$PKG_EXT build/packages/$OS_NAME/ 2>/dev/null || true
   needs:
     - job: build
       artifacts: true
@@ -99,22 +105,21 @@ test:
   script:
     - export TARGET_OS="$OS_NAME"
     
-    # 1. Поиск пакета с правильным расширением (.deb или .rpm)
+    # 1. Поиск пакета
     - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | head -n 1)
     - "[ -z \"$PKG_FILE\" ] && exit 1"
     
-    # 2. Установка в "сухом режиме" с использованием правильной утилиты из матрицы
+    # 2. Инспекция пакета (динамические команды под каждую ОС)
     - echo "🔍 Проверка целостности пакета для $OS_NAME..."
     - $PKG_INFO_CMD $PKG_FILE
     - $PKG_LIST_CMD $PKG_FILE
     
-    # 3. Валидация модуля (исправлено: забираем артефакты из build и package)
-    - KO_FILE=$(find build/ -name "accord-le.ko" | head -n 1)
+    # 3. Валидация самого .ko модуля
+    - KO_FILE=$(find ./ -name "accord-le.ko" | head -n 1)
     - echo "🔍 Проверка метаданных драйвера под $OS_NAME..."
     - modinfo $KO_FILE | grep -q "vermagic"
     
-    # 4. Тестовая установка пакета в текущее окружение ОС
-    # Команда работает одинаково для оригинального APT и для APT-RPM в ALT Linux
+    # 4. Имитация установки пакета в систему
     - apt-get install -fy ./$PKG_FILE
     
     - echo "✅ Пакет под $OS_NAME успешно прошел все проверки!"
@@ -129,7 +134,6 @@ release-artifacts:
   image: "debian:12"
   script:
     - echo "🚀 Все пакеты успешно собраны и протестированы!"
-    - echo "Список готовых файлов (.deb и .rpm):"
     - find build/packages/ -type f
   needs:
     - job: test
