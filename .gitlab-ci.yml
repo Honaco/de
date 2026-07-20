@@ -8,9 +8,8 @@ stages:
 variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
-  # Убрали отсюда проблемную переменную MODULE_VERSION
 
-# Расширенная矩阵 для сборки
+# Расширенная матрица для сборки
 .os_matrix:
   parallel:
     matrix:
@@ -46,7 +45,6 @@ variables:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -yqq
     - apt-get install -yqq build-essential sudo git $HEADERS_PKG rpm kmod udev $EXTRA_PKGS
-    # ИСПРАВЛЕНО: Вычисляем версию прямо в Bash. Теперь fallback до '1.0.0' сработает корректно!
     - export MODULE_VERSION="${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
 
 validate-build-system:
@@ -76,8 +74,6 @@ build:
       - tools/
     expire_in: 1 week
 
-
-
 package:
   stage: package
   extends: 
@@ -87,7 +83,7 @@ package:
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
     
-    # ИСПРАВЛЕНИЕ: Полная настройка rpmbuild для работы от root
+    # Полная настройка rpmbuild для работы от root
     - if [ "$PKG_EXT" = "rpm" ]; then
         echo "🔧 Настройка rpmbuild для работы от root...";
         echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros;
@@ -97,6 +93,8 @@ package:
         echo "%_binary_filedigest_algorithm 0" >> ~/.rpmmacros;
         echo "%_build_id_links none" >> ~/.rpmmacros;
         echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
+        # ИСПРАВЛЕНО: Добавляем разрешение на сборку пакетов от пользователя root для ALT Linux
+        echo "%_allow_root_build 1" >> ~/.rpmmacros; 
         cat ~/.rpmmacros;
         echo "✅ rpmmacros настроен";
       fi
@@ -114,10 +112,6 @@ package:
     paths:
       - build/packages/
     expire_in: 2 weeks
-
-
-    
-
 
 test:
   stage: test
