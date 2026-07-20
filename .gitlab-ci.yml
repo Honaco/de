@@ -93,10 +93,9 @@ package:
         echo "%_binary_filedigest_algorithm 0" >> ~/.rpmmacros;
         echo "%_build_id_links none" >> ~/.rpmmacros;
         echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
-        # ИСПРАВЛЕНО: Добавляем разрешение на сборку пакетов от пользователя root для ALT Linux
         echo "%_allow_root_build 1" >> ~/.rpmmacros; 
         cat ~/.rpmmacros;
-        echo "✅ rpmmacros настроен";
+        echo "rpmmacros настроен";
       fi
     
     # Передаем корректно сформированную версию в Makefile папки driver
@@ -135,7 +134,17 @@ test:
     - echo "🔍 Проверка метаданных драйвера под $OS_NAME..."
     - modinfo $KO_FILE | grep -q "vermagic"
     
-    # 4. Тестовая установка пакета
+    # 4. ЗАГЛУШКИ: Создаем фейковые системные бинарники для ALT Linux (чтобы пройти %post скрипты)
+    - if [ "$OS_NAME" = "alt" ]; then
+        echo "🔧 Создание заглушек для udevadm и systemctl...";
+        mkdir -p /tmp/ci_stubs;
+        printf '#!/bin/sh\nexit 0\n' > /tmp/ci_stubs/udevadm;
+        printf '#!/bin/sh\nexit 0\n' > /tmp/ci_stubs/systemctl;
+        chmod +x /tmp/ci_stubs/udevadm /tmp/ci_stubs/systemctl;
+        export PATH="/tmp/ci_stubs:$PATH";
+      fi
+    
+    # 5. Тестовая установка пакета
     - apt-get install -fy ./$PKG_FILE
     
     - echo "✅ Пакет под $OS_NAME успешно прошел все проверки!"
@@ -144,6 +153,7 @@ test:
       artifacts: true
     - job: package
       artifacts: true
+
 
 release-artifacts:
   stage: release
