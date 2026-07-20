@@ -10,7 +10,7 @@ variables:
   BUILD_NUMBER: "$CI_PIPELINE_IID"
   MODULE_VERSION: "${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
 
-# Расширенная матрица для сборки (теперь с ALT Linux)
+# Расширенная матрица для сборки
 .os_matrix:
   parallel:
     matrix:
@@ -31,13 +31,13 @@ variables:
         PKG_LIST_CMD: "dpkg-deb -c"
         EXTRA_PKGS: ""
       - OS_NAME: "alt"
-        OS_IMAGE: "alt:p10" # Можно заменить на alt:p11 или alt:sisyphus при необходимости
+        OS_IMAGE: "alt:p10"
         HEADERS_PKG: "kernel-headers-modules-std-def"
         PKG_EXT: "rpm"
         MAKE_TARGET: "package-rpm"
         PKG_INFO_CMD: "rpm -qip"
         PKG_LIST_CMD: "rpm -qlp"
-        EXTRA_PKGS: "rpm-build" # Для ALT необходима утилита сборки RPM
+        EXTRA_PKGS: "rpm-build"
 
 # Шаблон окружения
 .env_template:
@@ -62,7 +62,6 @@ build:
     - .env_template
     - .os_matrix
   script:
-    # Динамически находим симлинк build внутри контейнера конкретной ОС
     - export KERNEL_HEADERS=$(find /lib/modules -type l -name build | head -n 1)
     - echo "Используем заголовки ядра по пути $KERNEL_HEADERS для $OS_NAME"
     - export TARGET_OS="$OS_NAME"
@@ -84,10 +83,10 @@ package:
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
     
-    # ИСПОЛЬЗУЕМ ПЕРЕМЕННУЮ МАТРИЦЫ: вызываем нужный таргет и передаем параметры версии
-    - make $MAKE_TARGET MODULE_VERSION="$MODULE_VERSION" BUILD_NUM="$BUILD_NUMBER"
+    # ИСПРАВЛЕНО: Добавлен флаг -C driver, чтобы зайти в нужный Makefile
+    - make -C driver $MAKE_TARGET MODULE_VERSION="$MODULE_VERSION" BUILD_NUM="$BUILD_NUMBER"
     
-    # ИСПРАВЛЕНО: Забираем пакет из build/ и изолируем по папкам ОС
+    # Забираем готовый пакет из build/ и изолируем по папкам ОС
     - mkdir -p build/packages/$OS_NAME
     - mv build/*.$PKG_EXT build/packages/$OS_NAME/ 2>/dev/null || true
   needs:
@@ -106,22 +105,21 @@ test:
   script:
     - export TARGET_OS="$OS_NAME"
     
-    # 1. Поиск пакета с правильным расширением (.deb или .rpm)
+    # 1. Поиск пакета
     - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | head -n 1)
     - "[ -z \"$PKG_FILE\" ] && exit 1"
     
-    # 2. Установка в "сухом режиме" с использованием правильной утилиты из матрицы
+    # 2. Проверка целостности пакета
     - echo "🔍 Проверка целостности пакета для $OS_NAME..."
     - $PKG_INFO_CMD $PKG_FILE
     - $PKG_LIST_CMD $PKG_FILE
     
-    # 3. Валидация модуля (исправлено: забираем артефакты из build и package)
+    # 3. Валидация модуля через modinfo
     - KO_FILE=$(find build/ -name "accord-le.ko" | head -n 1)
     - echo "🔍 Проверка метаданных драйвера под $OS_NAME..."
     - modinfo $KO_FILE | grep -q "vermagic"
     
-    # 4. Тестовая установка пакета в текущее окружение ОС
-    # Команда работает одинаково для оригинального APT и для APT-RPM в ALT Linux
+    # 4. Тестовая установка пакета
     - apt-get install -fy ./$PKG_FILE
     
     - echo "✅ Пакет под $OS_NAME успешно прошел все проверки!"
