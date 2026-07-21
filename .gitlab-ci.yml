@@ -9,7 +9,7 @@ variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
 
-# Расширенная матрица для сборки (добавлена Astra Linux)
+# Расширенная матрица для сборки (добавлена официальная Astra Linux)
 .os_matrix:
   parallel:
     matrix:
@@ -30,7 +30,7 @@ variables:
         PKG_LIST_CMD: "dpkg-deb -c"
         EXTRA_PKGS: ""
       - OS_NAME: "astra"
-        OS_IMAGE: "astralinux/astra-ce:latest"
+        OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
         HEADERS_PKG: "linux-headers-generic"
         PKG_EXT: "deb"
         MAKE_TARGET: "package-deb"
