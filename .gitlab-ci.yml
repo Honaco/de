@@ -9,7 +9,7 @@ variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
 
-# Расширенная матрица для сборки
+# Расширенная матрица для сборки (добавлена Astra Linux)
 .os_matrix:
   parallel:
     matrix:
@@ -23,6 +23,14 @@ variables:
         EXTRA_PKGS: ""
       - OS_NAME: "ubuntu"
         OS_IMAGE: "ubuntu:20.04"
+        HEADERS_PKG: "linux-headers-generic"
+        PKG_EXT: "deb"
+        MAKE_TARGET: "package-deb"
+        PKG_INFO_CMD: "dpkg-deb -I"
+        PKG_LIST_CMD: "dpkg-deb -c"
+        EXTRA_PKGS: ""
+      - OS_NAME: "astra"
+        OS_IMAGE: "astralinux/astra-ce:latest"
         HEADERS_PKG: "linux-headers-generic"
         PKG_EXT: "deb"
         MAKE_TARGET: "package-deb"
@@ -83,7 +91,7 @@ package:
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
     
-    # Полная настройка rpmbuild для работы от root
+    # Полная настройка rpmbuild для работы от root (только для RPM/ALT)
     - if [ "$PKG_EXT" = "rpm" ]; then
         echo "🔧 Настройка rpmbuild для работы от root...";
         echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros;
@@ -98,10 +106,10 @@ package:
         echo "rpmmacros настроен";
       fi
     
-    # Передаем корректно сформированную версию в Makefile папки driver
+    # Передаем версию в Makefile
     - make -C driver $MAKE_TARGET MODULE_VERSION="$MODULE_VERSION" BUILD_NUM="$BUILD_NUMBER"
     
-    # Забираем готовый пакет из build/ и изолируем по папкам ОС
+    # Забираем готовый пакет
     - mkdir -p build/packages/$OS_NAME
     - mv build/*.$PKG_EXT build/packages/$OS_NAME/ 2>/dev/null || true
   needs:
@@ -134,7 +142,7 @@ test:
     - echo "🔍 Проверка метаданных драйвера под $OS_NAME..."
     - modinfo $KO_FILE | grep -q "vermagic"
     
-    # 4. ЗАГЛУШКИ: Заменяем реальные бинарники по абсолютным путям
+    # 4. ЗАГЛУШКИ: Обезвреживание бинарников для ALT Linux
     - if [ "$OS_NAME" = "alt" ]; then
         echo "🔧 Обезвреживание systemctl и udevadm в системных директориях...";
         for path in /sbin/udevadm /usr/sbin/udevadm /bin/udevadm /usr/bin/udevadm /bin/systemctl /usr/bin/systemctl /sbin/systemctl /usr/sbin/systemctl; do
@@ -153,7 +161,6 @@ test:
       artifacts: true
     - job: package
       artifacts: true
-
 
 release-artifacts:
   stage: release
