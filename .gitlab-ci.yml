@@ -13,6 +13,14 @@ variables:
 .os_matrix:
   parallel:
     matrix:
+      - OS_NAME: "redos"
+        OS_IMAGE: "redos/redos:7.3"  # <-- Берем публичный образ из Docker Hub
+        HEADERS_PKG: "kernel-devel"
+        PKG_EXT: "rpm"
+        MAKE_TARGET: "package-rpm"
+        PKG_INFO_CMD: "rpm -qip"
+        PKG_LIST_CMD: "rpm -qlp"
+        EXTRA_PKGS: "rpm-build gcc make"
       - OS_NAME: "debian"
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
@@ -45,14 +53,6 @@ variables:
         PKG_INFO_CMD: "rpm -qip"
         PKG_LIST_CMD: "rpm -qlp"
         EXTRA_PKGS: "rpm-build"
-      - OS_NAME: "redos"
-        OS_IMAGE: "registry.red-soft.ru/redos/redos:7.3" # Или "redos/redos:7.3" из Docker Hub
-        HEADERS_PKG: "kernel-devel"
-        PKG_EXT: "rpm"
-        MAKE_TARGET: "package-rpm"
-        PKG_INFO_CMD: "rpm -qip"
-        PKG_LIST_CMD: "rpm -qlp"
-        EXTRA_PKGS: "rpm-build gcc make"
 
 # Шаблон окружения
 .env_template:
