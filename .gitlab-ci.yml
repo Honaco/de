@@ -9,7 +9,7 @@ variables:
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
 
-# Расширенная матрица для сборки (добавлена официальная Astra Linux)
+# Расширенная матрица для сборки
 .os_matrix:
   parallel:
     matrix:
@@ -31,7 +31,7 @@ variables:
         EXTRA_PKGS: ""
       - OS_NAME: "astra"
         OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
-        HEADERS_PKG: "linux-headers-generic"
+        HEADERS_PKG: "linux-headers-hardened-amd64" # Специфично для Astra Linux
         PKG_EXT: "deb"
         MAKE_TARGET: "package-deb"
         PKG_INFO_CMD: "dpkg-deb -I"
@@ -52,6 +52,20 @@ variables:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -yqq
+    
+    # Умный поиск заголовков для apt-based систем (Debian/Ubuntu/Astra)
+    - |
+      if command -v apt-cache >/dev/null 2>&1; then
+        if [ -n "$HEADERS_PKG" ] && ! apt-cache show "$HEADERS_PKG" >/dev/null 2>&1; then
+          echo "⚠️ Пакет $HEADERS_PKG не найден в $OS_NAME. Ищем альтернативные заголовки ядра...";
+          FOUND_PKG=$(apt-cache search "^linux-headers-" | grep -E "hardened|generic|amd64|astra" | head -n 1 | awk '{print $1}');
+          if [ -n "$FOUND_PKG" ]; then
+            echo "💡 Найден пакет: $FOUND_PKG";
+            HEADERS_PKG="$FOUND_PKG";
+          fi;
+        fi;
+      fi
+      
     - apt-get install -yqq build-essential sudo git $HEADERS_PKG rpm kmod udev $EXTRA_PKGS
     - export MODULE_VERSION="${CI_COMMIT_TAG:-1.0.0}-build${CI_PIPELINE_IID}-g${CI_COMMIT_SHORT_SHA}"
 
@@ -91,7 +105,7 @@ package:
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
     
-    # Полная настройка rpmbuild для работы от root (только для RPM/ALT)
+    # Настройка rpmbuild для работы от root (для RPM/ALT)
     - if [ "$PKG_EXT" = "rpm" ]; then
         echo "🔧 Настройка rpmbuild для работы от root...";
         echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros;
