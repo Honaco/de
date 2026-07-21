@@ -14,7 +14,7 @@ variables:
   parallel:
     matrix:
       - OS_NAME: "redos"
-        OS_IMAGE: "redos/redos:7.3"  # <-- Берем публичный образ из Docker Hub
+        OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest" # <-- Правильный открытый образ РЕД ОС 7.3
         HEADERS_PKG: "kernel-devel"
         PKG_EXT: "rpm"
         MAKE_TARGET: "package-rpm"
