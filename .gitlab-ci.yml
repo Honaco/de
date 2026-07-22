@@ -97,7 +97,20 @@ build:
     - .env_template
     - .os_matrix
   script:
-    - export KERNEL_HEADERS=$(find /lib/modules -type l -name build | head -n 1)
+    - |
+      # 1. Ищем стандартный симлинк (обычно работает везде)
+      export KERNEL_HEADERS=$(find /lib/modules -type l -name build 2>/dev/null | head -n 1)
+      
+      # 2. Резервный поиск для RPM-систем (РЕД ОС), если симлинка нет
+      if [ -z "$KERNEL_HEADERS" ]; then
+        export KERNEL_HEADERS=$(find /usr/src/kernels -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n 1)
+      fi
+      
+      # 3. Дополнительный поиск для DEB-систем (на всякий случай)
+      if [ -z "$KERNEL_HEADERS" ]; then
+        export KERNEL_HEADERS=$(find /usr/src -maxdepth 1 -type d -name "linux-headers-*" 2>/dev/null | grep -v "common" | head -n 1)
+      fi
+      
     - echo "Используем заголовки ядра по пути $KERNEL_HEADERS для $OS_NAME"
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
