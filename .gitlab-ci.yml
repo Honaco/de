@@ -133,6 +133,9 @@ package:
         echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
         echo "%_allow_root_build 1" >> ~/.rpmmacros; 
       fi
+    - echo "🔄 Восстанавливаем accord-le.ko в driver/ для упаковки..."
+    - mkdir -p driver
+    - cp -v build/accord-le.ko driver/ 2>/dev/null || echo "⚠️ accord-le.ko не найден в build/"
     - make ci-package
   needs:
     - job: build
