@@ -55,7 +55,7 @@ driver:
 	@mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver all
 	@# Копируем прямо из текущего места сборки
-	@if [ -f driver/accord-le.ko ]; then \
+	if [ -f driver/accord-le.ko ]; then \
 		cp driver/accord-le.ko $(OUTPUT_DIR)/; \
 		echo "✅ Драйвер скопирован в $(OUTPUT_DIR)"; \
 	else \
