@@ -24,20 +24,18 @@ all:
 		exit 1; \
 	fi
 	make -r -C $(KERNEL_HEADERS) M=$(shell pwd) modules
-	@echo "✅ accord-le.ko собран"
+	@echo "accord-le.ko собран"
 
-# ===== Очистка =====
 clean:
-	make -r -C $(KERNEL_HEADERS) M=$(shell pwd) clean || true
+	make -r -C $(KERNEL_HEADERS) M=$(shell pwd) clean 
 	rm -f accord-le.ko accord-le.o
 	rm -f *.mod.* .*.cmd
 	rm -rf .tmp_versions
 	rm -f Module.markers Module.symvers modules.order
 
-# ===== Установка =====
 install:
 	@if [ ! -f accord-le.ko ]; then \
-		echo "❌ Сначала выполните 'make build'"; \
+		echo "Сначала выполните 'make build'"; \
 		exit 1; \
 	fi
 	make modules_install -C $(KERNEL_HEADERS) M=$(shell pwd)
@@ -46,9 +44,8 @@ install:
 		cp 99-accord-le.rules /etc/udev/rules.d/; \
 		udevadm control --reload-rules && udevadm trigger; \
 	fi
-	@echo "✅ Драйвер установлен"
+	@echo "Драйвер установлен"
 
-# ===== Удаление =====
 uninstall:
 	@if [ -n "$(INSTALL_PATH)" ]; then \
 		rm -f "$(INSTALL_PATH)"; \
@@ -56,28 +53,24 @@ uninstall:
 	fi
 	rm -f /etc/udev/rules.d/99-accord-le.rules
 	udevadm control --reload-rules
-	@echo "✅ Драйвер удалён"
+	@echo "Драйвер удалён"
 
-# ===== Тесты (ТЗ п. 8) =====
 test:
-	@echo "🧪 Тестирование драйвера..."
 	@if [ -f accord-le.ko ]; then \
-		echo "✅ accord-le.ko существует"; \
+		echo "accord-le.ko существует"; \
 		file accord-le.ko; \
 	else \
-		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
+		echo "accord-le.ko не найден; \
 		exit 1; \
 	fi
-	@test -f 99-accord-le.rules && echo "✅ udev rules найдены" || echo "⚠️ udev rules отсутствуют"
-	@echo "✅ Тесты драйвера пройдены"
+	@test -f 99-accord-le.rules && echo "udev rules найдены"
+	@echo "Тесты драйвера пройдены"
 
-# ===== Упаковка (ТЗ п. 5, 6.2) =====
 package: package-tar package-deb package-rpm
 
-# TAR.GZ: accord-le-<version>-<kernel>.tar.gz
 package-tar:
 	@if [ ! -f accord-le.ko ]; then \
-		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
+		echo "accord-le.ko не найден."; \
 		exit 1; \
 	fi
 	@mkdir -p $(OUTPUT_DIR)/tar/accord-le-$(MODULE_VERSION)
@@ -88,12 +81,11 @@ package-tar:
 	tar -czf $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz \
 		-C $(OUTPUT_DIR)/tar accord-le-$(MODULE_VERSION)
 	rm -rf $(OUTPUT_DIR)/tar
-	@echo "✅ Создан: accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz"
+	@echo "Создан: accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz"
 
-# DEB: accord-le_<version>_<arch>.deb
 package-deb:
 	@if [ ! -f accord-le.ko ]; then \
-		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
+		echo "accord-le.ko не найден"; \
 		exit 1; \
 	fi
 	@rm -rf $(OUTPUT_DIR)/deb-driver
@@ -117,13 +109,11 @@ package-deb:
 	dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/deb-driver \
 		$(OUTPUT_DIR)/accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb
 	@rm -rf $(OUTPUT_DIR)/deb-driver
-	@echo "✅ Создан: accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb"
+	@echo "Создан: accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb"
 
-# RPM: accord-le-<version>.<arch>.rpm
-# RPM: accord-le-<version>.<arch>.rpm
 package-rpm:
 	@if [ ! -f accord-le.ko ]; then \
-		echo "❌ accord-le.ko не найден. Выполните 'make build'"; \
+		echo "accord-le.ko не найден"; \
 		exit 1; \
 	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-driver
@@ -135,13 +125,10 @@ package-rpm:
 	@mkdir -p $(OUTPUT_DIR)/rpm-driver/BUILDROOT
 	@mkdir -p $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)
 	
-	# Копируем файлы в SOURCES
 	cp accord-le.ko $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/
 	@if [ -f 99-accord-le.rules ]; then \
 		cp 99-accord-le.rules $(OUTPUT_DIR)/rpm-driver/SOURCES/accord-le-$(MODULE_VERSION)/; \
 	fi
-	
-	# RPM версия (без дефисов)
 	RPM_VER=$$(echo $(MODULE_VERSION) | sed 's/-/_/g'); \
 	echo "Name: accord-le-driver" > $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "Version: $$RPM_VER" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
@@ -179,11 +166,11 @@ package-rpm:
 			-bb $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 		find $(OUTPUT_DIR)/rpm-driver/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
 		if [ -f $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
-			echo "✅ Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
+			echo "Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
 		else \
-			echo "⚠️ RPM пакет не найден"; \
+			echo "RPM пакет не найден"; \
 		fi \
 	else \
-		echo "⚠️ rpmbuild не установлен. Пропускаем RPM."; \
+		echo "rpmbuild не установлен. "; \
 	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-driver

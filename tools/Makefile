@@ -44,9 +44,9 @@ $(EXTRA_TOOLS):
 # Создание tar-архива утилит
 acle-tools-tar:
 	mkdir -p acle-tools
-	find ./ -maxdepth 1 -type f -executable -name "acle-*" -exec cp {} acle-tools/ \;
-	find ./ -maxdepth 1 -type f -executable -name "convert_*" -exec cp {} acle-tools/ \; 
-	cp -r scripts/ acle-tools/scripts/ 
+	find ./ -maxdepth 1 -type f -executable -name "acle-*" -exec cp {} acle-tools/ \; 2>/dev/null || true
+	find ./ -maxdepth 1 -type f -executable -name "convert_*" -exec cp {} acle-tools/ \; 2>/dev/null || true
+	cp -r scripts/ acle-tools/scripts/ 2>/dev/null || true
 	tar -cJvf acle-tools-bin.tar.gz acle-tools
 	rm -rf acle-tools
 	mkdir -p $(OUTPUT_DIR)
@@ -72,7 +72,7 @@ install:
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl /usr/local/bin/; fi
 	@mkdir -p /usr/local/share/acle-tools/scripts
-	@cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 
+	@cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 2>/dev/null || true
 	@chmod +x /usr/local/share/acle-tools/scripts/*.sh 
 	@echo "✅ Утилиты установлены"
 
@@ -80,7 +80,7 @@ uninstall:
 	@echo "🗑️  Удаление утилит..."
 	@for tool in $(ACLE_TOOLS) $(EXTRA_TOOLS); do rm -f /usr/local/bin/$$tool; done
 	@rm -f /usr/local/bin/convert_icl
-	@ rm -rf /usr/local/share/acle-tools
+	@rm -rf /usr/local/share/acle-tools
 	@echo "✅ Утилиты удалены"
 
 test:
@@ -112,7 +112,7 @@ package-tar:
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/; fi
 	@mkdir -p $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts
-	@cp scripts/*.sh $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts/ 
+	@cp scripts/*.sh $(OUTPUT_DIR)/tar/acle-tools-$(MODULE_VERSION)/scripts/ 2>/dev/null || true
 	@tar -czf $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz \
 		-C $(OUTPUT_DIR)/tar acle-tools-$(MODULE_VERSION)
 	@rm -rf $(OUTPUT_DIR)/tar
@@ -127,7 +127,8 @@ package-deb:
 	@for tool in $(ACLE_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
 	@for tool in $(EXTRA_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/deb-tools/usr/bin/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 
+	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true
+	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
 	
 	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 
 
@@ -163,7 +164,7 @@ package-rpm:
 		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi; \
 	done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/ 
+	@cp scripts/*.sh $(OUTPUT_DIR)/rpm-tools/SOURCES/acle-tools-$(MODULE_VERSION)/ 2>/dev/null || true
 	
 	@echo "Name: acle-tools" > $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "Version: $(RPM_VERSION)" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec

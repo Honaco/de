@@ -6,13 +6,9 @@ stages:
   - release
 
 variables:
-  # Передаем параметры согласно вашему Makefile
   OUTPUT_DIR: "$CI_PROJECT_DIR/build"
   BUILD_NUMBER: "$CI_PIPELINE_IID"
 
-# ---------------------------------------------------------
-# ТЗ п. 3.4: Расширенная матрица ОС
-# ---------------------------------------------------------
 .os_matrix:
   parallel:
     matrix:
@@ -57,16 +53,11 @@ variables:
         PKG_EXT: "rpm"
         EXTRA_PKGS: "rpm-build gcc make dpkg"
 
-# ---------------------------------------------------------
-# Универсальный скрипт подготовки окружения
-# ---------------------------------------------------------
 .env_template:
   image: $OS_IMAGE
   before_script:
     - export TARGET_OS="$OS_NAME"
     - export TARGET_ARCH=$(uname -m)
-    
-    # Адаптивная установка зависимостей (apt / dnf / yum)
     - |
       if command -v apt-get >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive
@@ -84,7 +75,6 @@ variables:
         yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
       fi
       
-    # Поиск заголовков ядра (универсальный)
     - |
       export KERNEL_HEADERS=$(find /lib/modules -type l -name build 2>/dev/null | head -n 1)
       if [ -z "$KERNEL_HEADERS" ]; then
@@ -94,9 +84,6 @@ variables:
         export KERNEL_HEADERS=$(find /usr/src -maxdepth 1 -type d -name "linux-headers-*" 2>/dev/null | grep -v "common" | head -n 1)
       fi
 
-# ---------------------------------------------------------
-# Этапы CI/CD (ТЗ п. 4.3)
-# ---------------------------------------------------------
 
 # validate-build-system:
 #   stage: validate
@@ -112,12 +99,10 @@ build:
     - .env_template
     - .os_matrix
   script:
-    # Makefile сам подтянет TARGET_OS, OUTPUT_DIR и KERNEL_HEADERS из окружения
     - make ci-build
   artifacts:
     paths:
       - build/
-    expire_in: 1 week
 
 package:
   stage: package
@@ -126,14 +111,13 @@ package:
     - .os_matrix
   script:
     - if [ "$PKG_EXT" = "rpm" ]; then
-        echo "🔧 Настройка rpmbuild...";
         echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros;
         echo "%_tmppath /tmp" >> ~/.rpmmacros;
         echo "%__spec_install_post %{nil}" >> ~/.rpmmacros;
         echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
         echo "%_allow_root_build 1" >> ~/.rpmmacros; 
       fi
-    - echo "🔄 Восстанавливаем accord-le.ko в driver/ для упаковки..."
+    - echo "Восстанавливаем accord-le.ko в driver/ для упаковки..."
     - mkdir -p driver
     - cp -v build/accord-le.ko driver/ 2>/dev/null || echo "⚠️ accord-le.ko не найден в build/"
     - make ci-package
@@ -143,8 +127,6 @@ package:
   artifacts:
     paths:
       - build/packages/
-    expire_in: 2 weeks
-
 
 
 test:
@@ -153,21 +135,18 @@ test:
     - .env_template
     - .os_matrix
   script:
-    # 1. Поиск пакета драйвера (исключаем tools)
     - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
-    - echo "🔍 Найден пакет: $PKG_FILE"
+    - echo "🔍 Найден пакет $PKG_FILE"
     - "[ -z \"$PKG_FILE\" ] && echo '❌ Пакет не найден' && exit 1"
     
-    # 2. Динамическое определение имени пакета
     - |
       if [ "$PKG_EXT" = "deb" ]; then
         PKG_NAME=$(dpkg-deb -f $PKG_FILE Package)
       else
         PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
       fi
-    - echo "📦 Имя пакета: $PKG_NAME"
+    - echo "📦 Имя пакета $PKG_NAME"
 
-    # 3. Установка пакета (ПРАВИЛЬНАЯ логика - по типу пакета, а не по менеджеру)
     - echo "📥 Установка пакета..."
     - |
       if [ "$PKG_EXT" = "deb" ]; then
@@ -184,7 +163,6 @@ test:
         fi
       fi
 
-    # 4. Поиск модуля
     - echo "🔍 Поиск accord-le.ko..."
     - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
     - if [ -z "$KO_FILE" ]; then
@@ -192,9 +170,8 @@ test:
         find /lib/modules -name "*.ko" | head -10;
         exit 1;
       fi
-    - echo "✅ Модуль: $KO_FILE"
+    - echo "✅ Модуль $KO_FILE"
 
-    # 5. Загрузка драйвера (ТЗ п. 8)
     - echo "🔌 Загрузка модуля..."
     - |
       if [ -w /dev/kmsg ]; then
@@ -212,7 +189,6 @@ test:
         modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "✅ Модуль валиден";
       fi
 
-    # 6. Выгрузка и удаление (ПРАВИЛЬНАЯ логика - по типу пакета)
     - echo "🗑️ Выгрузка..."
     - rmmod accord_le 2>/dev/null || true
     - echo "️ Удаление пакета $PKG_NAME..."
@@ -236,12 +212,11 @@ test:
 
 
 
-release-artifacts:
+release:
   stage: release
   image: "debian:12"
   script:
-    - echo "🚀 Релиз сформирован!"
-    - echo "Структура артефактов (ТЗ п. 6.1):"
+    - echo "Структура артефактов:"
     - ls -R build/packages/
   needs:
     - job: test
