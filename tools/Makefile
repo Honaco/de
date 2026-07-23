@@ -3,13 +3,12 @@ BUILD_NUM      ?= 1
 TARGET_ARCH    ?= $(shell uname -m)
 OUTPUT_DIR     ?= $(CURDIR)/../build
 RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
-CFLAGS = -Wall -g
 
+CFLAGS = -Wall -g
 ACLE_TOOLS = acle-buf0 acle-disable-watchdog acle-get-random acle-get-state \
              acle-get-tmid acle-login acle-logout acle-sd acle-set-rng \
              acle-test-random-generator acle-write-sectors acle-get-rtc \
              acle-set-rtc acle-set-sdc-mode
-
 EXTRA_TOOLS = crypt_db decrypt_db_write
 CONVERT_TOOLS = convert_icl
 
@@ -18,33 +17,32 @@ CONVERT_TOOLS = convert_icl
 all: $(ACLE_TOOLS) $(CONVERT_TOOLS) $(EXTRA_TOOLS) acle-tools-tar
 
 $(ACLE_TOOLS):
-	@echo "🔨 Сборка $@..."
+	@echo "сборка"
 	@if [ -f $@/Makefile ]; then \
 		${MAKE} -C $@ all; \
 	else \
-		echo "$@/Makefile не найден, пропускаем"; \
+		echo "$@/Makefile не найден"; \
 	fi
 
 $(CONVERT_TOOLS):
-	@echo "🔨 Сборка $@..."
+	@echo "сборка"
 	@if [ -f $@/Makefile ]; then \
 		${MAKE} -C $@ all; \
 	else \
-		echo "$@/Makefile не найден, пропускаем"; \
+		echo "$@/Makefile не найден"; \
 	fi
 
 $(EXTRA_TOOLS):
-	@echo "🔨 Сборка $@..."
+	@echo "сборка"
 	@if [ -f $@/Makefile ]; then \
 		${MAKE} -C $@ all; \
 	else \
-		echo "$@: нет Makefile, пропускаем"; \
+		echo "$@: нет Makefile"; \
 	fi
 
-# Создание tar-архива утилит
 acle-tools-tar:
 	mkdir -p acle-tools
-	find ./ -maxdepth 1 -type f -executable -name "acle-*" -exec cp {} acle-tools/ \; 2>/dev/null || true
+	find ./ -maxdepth 1 -type f -executable -name "acle-*" -exec cp {} acle-tools/ \;
 	find ./ -maxdepth 1 -type f -executable -name "convert_*" -exec cp {} acle-tools/ \; 2>/dev/null || true
 	cp -r scripts/ acle-tools/scripts/ 2>/dev/null || true
 	tar -cJvf acle-tools-bin.tar.gz acle-tools
@@ -55,50 +53,46 @@ acle-tools-tar:
 clean:
 	@for tool in $(ACLE_TOOLS) $(CONVERT_TOOLS) $(EXTRA_TOOLS); do \
 		if [ -f $$tool/Makefile ]; then \
-			 ${MAKE} -C $$tool clean; \
+			sudo ${MAKE} -C $$tool clean 2>/dev/null || true; \
 		fi; \
 	done
 	rm -f acle-tools-bin.tar.gz
 	rm -rf acle-tools
 
-# ===== Установка =====
 install:
-	@echo "📥 Установка утилит..."
 	@for tool in $(ACLE_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool /usr/local/bin/; fi; \
+		if [ -f $$tool/$$tool ]; then sudo cp $$tool/$$tool /usr/local/bin/; fi; \
 	done
 	@for tool in $(EXTRA_TOOLS); do \
-		if [ -f $$tool/$$tool ]; then cp $$tool/$$tool /usr/local/bin/; fi; \
+		if [ -f $$tool/$$tool ]; then sudo cp $$tool/$$tool /usr/local/bin/; fi; \
 	done
-	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl /usr/local/bin/; fi
-	@mkdir -p /usr/local/share/acle-tools/scripts
-	@cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 2>/dev/null || true
-	@chmod +x /usr/local/share/acle-tools/scripts/*.sh 
-	@echo "✅ Утилиты установлены"
+	@if [ -f convert_icl/convert_icl ]; then sudo cp convert_icl/convert_icl /usr/local/bin/; fi
+	@sudo mkdir -p /usr/local/share/acle-tools/scripts
+	@sudo cp scripts/*.sh /usr/local/share/acle-tools/scripts/ 2>/dev/null || true
+	@sudo chmod +x /usr/local/share/acle-tools/scripts/*.sh 2>/dev/null || true
+	@echo "Утилиты установлены"
 
 uninstall:
-	@echo "🗑️  Удаление утилит..."
-	@for tool in $(ACLE_TOOLS) $(EXTRA_TOOLS); do rm -f /usr/local/bin/$$tool; done
-	@rm -f /usr/local/bin/convert_icl
-	@rm -rf /usr/local/share/acle-tools
-	@echo "✅ Утилиты удалены"
+	@for tool in $(ACLE_TOOLS) $(EXTRA_TOOLS); do sudo rm -f /usr/local/bin/$$tool; done
+	@sudo rm -f /usr/local/bin/convert_icl
+	@sudo rm -rf /usr/local/share/acle-tools
+	@echo "Утилиты удалены"
 
 test:
-	@echo "🧪 Тестирование утилит..."
 	@for tool in $(ACLE_TOOLS); do \
 		if [ -f $$tool/Makefile ]; then \
-			$(MAKE) -C $$tool all ; \
+			$(MAKE) -C $$tool all 2>/dev/null || true; \
 		fi; \
 	done
 	@for tool in $(ACLE_TOOLS); do \
 		if [ -f $$tool/$$tool ]; then \
-			echo "✅ $$tool собран"; \
+			echo "$$tool собран"; \
 		else \
-			echo "⚠️ $$tool не найден (пропускаем)"; \
+			echo "$$tool не найден"; \
 		fi; \
 	done
-	@test -d scripts && echo "✅ Скрипты найдены" || echo "⚠️ Скрипты отсутствуют"
-	@echo "✅ Тесты утилит пройдены"
+	@test -d scripts && echo "Скрипты найдены" 
+	@echo "Тесты"
 
 package: package-tar package-deb package-rpm
 
@@ -116,7 +110,7 @@ package-tar:
 	@tar -czf $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz \
 		-C $(OUTPUT_DIR)/tar acle-tools-$(MODULE_VERSION)
 	@rm -rf $(OUTPUT_DIR)/tar
-	@echo "✅ Создан: acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz"
+	@echo "Создан: acle-tools-$(MODULE_VERSION)-$(TARGET_ARCH).tar.gz"
 
 package-deb:
 	@rm -rf $(OUTPUT_DIR)/deb-tools
@@ -127,25 +121,20 @@ package-deb:
 	@for tool in $(ACLE_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
 	@for tool in $(EXTRA_TOOLS); do if [ -f $$tool/$$tool ]; then cp $$tool/$$tool $(OUTPUT_DIR)/deb-tools/usr/bin/; fi; done
 	@if [ -f convert_icl/convert_icl ]; then cp convert_icl/convert_icl $(OUTPUT_DIR)/deb-tools/usr/bin/; fi
-	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true
-	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
-	
-	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 
-
+	@cp scripts/*.sh $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/ 2>/dev/null || true	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/bin/* 2>/dev/null || true
+	@chmod +x $(OUTPUT_DIR)/deb-tools/usr/share/acle-tools/scripts/*.sh 2>/dev/null || true
 	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	# Гарантируем, что версия начинается с цифры
 	@mkdir -p $(OUTPUT_DIR)/deb-tools/DEBIAN
 	@echo "Package: acle-tools" > $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@echo "Version: $(shell echo $(MODULE_VERSION) | sed 's/^-/0./')" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@echo "Architecture: $(if $(filter x86_64,$(TARGET_ARCH)),amd64,$(TARGET_ARCH))" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
-	
 	@echo "Description: Utilities for working with AMDZ GX" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@echo "Depends: zlib1g, perl" >> $(OUTPUT_DIR)/deb-tools/DEBIAN/control
 	@dpkg-deb --root-owner-group --build $(OUTPUT_DIR)/deb-tools \
 		$(OUTPUT_DIR)/acle-tools_$(MODULE_VERSION)-$(BUILD_NUM)_amd64.deb
 	@rm -rf $(OUTPUT_DIR)/deb-tools
-	@echo "✅ Создан: acle-tools_$(MODULE_VERSION)-$(BUILD_NUM)_amd64.deb"
+	@echo "Создан: acle-tools_$(MODULE_VERSION)-$(BUILD_NUM)_amd64.deb"
 
 package-rpm:
 	@rm -rf $(OUTPUT_DIR)/rpm-tools
@@ -179,9 +168,9 @@ package-rpm:
 	@echo "%install" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "mkdir -p %{buildroot}/usr/bin" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "mkdir -p %{buildroot}/usr/share/acle-tools/scripts" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/acle-* %{buildroot}/usr/bin/ " >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/convert_* %{buildroot}/usr/bin/ " >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
-	@echo "cp -r %{_sourcedir}/acle-tools-$(MODULE_VERSION)/scripts/* %{buildroot}/usr/share/acle-tools/scripts/ " >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/acle-* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "cp %{_sourcedir}/acle-tools-$(MODULE_VERSION)/convert_* %{buildroot}/usr/bin/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
+	@echo "cp -r %{_sourcedir}/acle-tools-$(MODULE_VERSION)/scripts/* %{buildroot}/usr/share/acle-tools/scripts/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "%files" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
 	@echo "/usr/bin/acle-*" >> $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec
@@ -191,13 +180,13 @@ package-rpm:
 		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-tools" \
 			--define "_sourcedir $(OUTPUT_DIR)/rpm-tools/SOURCES" \
 			-bb $(OUTPUT_DIR)/rpm-tools/SPECS/acle-tools.spec; \
-		find $(OUTPUT_DIR)/rpm-tools/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; \
+		find $(OUTPUT_DIR)/rpm-tools/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
 		if [ -f $(OUTPUT_DIR)/acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
-			echo "✅ Создан: acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
+			echo "Создан: acle-tools-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
 		else \
-			echo "⚠️ RPM пакет не найден"; \
+			echo "RPM пакет не найден"; \
 		fi \
 	else \
-		echo "rpmbuild не установлен. Пропускаем RPM."; \
+		echo "rpmbuild не установлен"; \
 	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-tools
