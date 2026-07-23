@@ -5,7 +5,7 @@
 
 # Переменные версии и платформы (со значениями по умолчанию)
 MODULE_VERSION ?= 1.0.0
-BUILD_NUM      ?= 1
+BUILD_NUMBER      ?= 1
 TARGET_ARCH    ?= $(shell uname -m)
 TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null || echo "debian")
 OUTPUT_DIR     ?= $(CURDIR)/../build
@@ -152,7 +152,7 @@ package-rpm:
 	RPM_VER=$$(echo $(MODULE_VERSION) | sed 's/-/_/g'); \
 	echo "Name: accord-le-driver" > $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "Version: $$RPM_VER" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
-	echo "Release: $(BUILD_NUM)%{?dist}" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "Release: $(BUILD_NUMBER)%{?dist}" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "Summary: Accord-LE Driver" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "License: Proprietary" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "Group: System Environment/Kernel" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
