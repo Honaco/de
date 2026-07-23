@@ -1,37 +1,26 @@
-# ==========================================
-# Makefile для сборки утилит Accord-LE
-# ТЗ п. 3.2, 5, 6.2
-# ==========================================
-
 MODULE_VERSION ?= 1.0.0
 BUILD_NUM      ?= 1
 TARGET_ARCH    ?= $(shell uname -m)
 OUTPUT_DIR     ?= $(CURDIR)/../build
 
-# RPM версия (без дефисов)
 RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
 
 CFLAGS = -Wall -g
 
-# Список утилит (исправлены все опечатки!)
 ACLE_TOOLS = acle-buf0 acle-disable-watchdog acle-get-random acle-get-state \
              acle-get-tmid acle-login acle-logout acle-sd acle-set-rng \
              acle-test-random-generator acle-write-sectors acle-get-rtc \
              acle-set-rtc acle-set-sdc-mode
 
-# Дополнительные утилиты
 EXTRA_TOOLS = crypt_db decrypt_db_write
 
-# Конвертеры
 CONVERT_TOOLS = convert_icl
 
 .PHONY: all clean install uninstall package package-tar package-deb package-rpm test
 
-# ===== Сборка всех утилит =====
 all: $(ACLE_TOOLS) $(CONVERT_TOOLS) $(EXTRA_TOOLS) acle-tools-tar
 	@echo "✅ Утилиты собраны"
 
-# Сборка каждой утилиты
 $(ACLE_TOOLS):
 	@echo "🔨 Сборка $@..."
 	@if [ -f $@/Makefile ]; then \

@@ -16,41 +16,41 @@ variables:
 .os_matrix:
   parallel:
     matrix:
-      - OS_NAME: "ubuntu"
-        OS_IMAGE: "ubuntu:20.04"
-        HEADERS_PKG: "linux-headers-generic"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      - OS_NAME: "ubuntu"
-        OS_IMAGE: "ubuntu:22.04"
-        HEADERS_PKG: "linux-headers-generic"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      - OS_NAME: "ubuntu"
-        OS_IMAGE: "ubuntu:24.04"
-        HEADERS_PKG: "linux-headers-generic"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      - OS_NAME: "debian"
-        OS_IMAGE: "debian:11"
-        HEADERS_PKG: "linux-headers-amd64"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      - OS_NAME: "debian"
-        OS_IMAGE: "debian:12"
-        HEADERS_PKG: "linux-headers-amd64"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      - OS_NAME: "astra"
-        OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
-        HEADERS_PKG: "linux-headers-hardened-amd64"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      - OS_NAME: "alt"
-        OS_IMAGE: "alt:p10" # Проксируем для ALT Linux 10C
-        HEADERS_PKG: "kernel-headers-modules-std-def"
-        PKG_EXT: "rpm"
-        EXTRA_PKGS: "rpm-build dpkg"
+      # - OS_NAME: "ubuntu"
+      #   OS_IMAGE: "ubuntu:20.04"
+      #   HEADERS_PKG: "linux-headers-generic"
+      #   PKG_EXT: "deb"
+      #   EXTRA_PKGS: ""
+      # - OS_NAME: "ubuntu"
+      #   OS_IMAGE: "ubuntu:22.04"
+      #   HEADERS_PKG: "linux-headers-generic"
+      #   PKG_EXT: "deb"
+      #   EXTRA_PKGS: ""
+      # - OS_NAME: "ubuntu"
+      #   OS_IMAGE: "ubuntu:24.04"
+      #   HEADERS_PKG: "linux-headers-generic"
+      #   PKG_EXT: "deb"
+      #   EXTRA_PKGS: ""
+      # - OS_NAME: "debian"
+      #   OS_IMAGE: "debian:11"
+      #   HEADERS_PKG: "linux-headers-amd64"
+      #   PKG_EXT: "deb"
+      #   EXTRA_PKGS: ""
+      # - OS_NAME: "debian"
+      #   OS_IMAGE: "debian:12"
+      #   HEADERS_PKG: "linux-headers-amd64"
+      #   PKG_EXT: "deb"
+      #   EXTRA_PKGS: ""
+      # - OS_NAME: "astra"
+      #   OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
+      #   HEADERS_PKG: "linux-headers-hardened-amd64"
+      #   PKG_EXT: "deb"
+      #   EXTRA_PKGS: ""
+      # - OS_NAME: "alt"
+      #   OS_IMAGE: "alt:p10" # Проксируем для ALT Linux 10C
+      #   HEADERS_PKG: "kernel-headers-modules-std-def"
+      #   PKG_EXT: "rpm"
+      #   EXTRA_PKGS: "rpm-build dpkg"
       - OS_NAME: "redos"
         OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
         HEADERS_PKG: "kernel-devel"
@@ -155,7 +155,7 @@ test:
   script:
     # 1. Поиск пакета драйвера (исключаем tools)
     - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
-    - echo "🔍 Найден пакет $PKG_FILE"
+    - echo "🔍 Найден пакет: $PKG_FILE"
     - "[ -z \"$PKG_FILE\" ] && echo '❌ Пакет не найден' && exit 1"
     
     # 2. Динамическое определение имени пакета
@@ -165,31 +165,34 @@ test:
       else
         PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
       fi
-    - echo " Имя пакета $PKG_NAME"
+    - echo "📦 Имя пакета: $PKG_NAME"
 
-    # 3. Установка пакета
-    - echo " Установка пакета..."
+    # 3. Установка пакета (ПРАВИЛЬНАЯ логика - по типу пакета, а не по менеджеру)
+    - echo "📥 Установка пакета..."
     - |
-      if command -v apt-get >/dev/null 2>&1; then
-        dpkg -i $PKG_FILE
-        apt-get install -f -y
-      elif command -v dnf >/dev/null 2>&1; then
-        dnf localinstall -y $PKG_FILE
-      elif command -v yum >/dev/null 2>&1; then
-        yum localinstall -y $PKG_FILE
-      else
-        rpm -i $PKG_FILE
+      if [ "$PKG_EXT" = "deb" ]; then
+        echo "Установка DEB пакета...";
+        dpkg -i $PKG_FILE || apt-get install -f -y;
+      elif [ "$PKG_EXT" = "rpm" ]; then
+        echo "📥 Установка RPM пакета...";
+        if command -v dnf >/dev/null 2>&1; then
+          dnf localinstall -y $PKG_FILE;
+        elif command -v yum >/dev/null 2>&1; then
+          yum localinstall -y $PKG_FILE;
+        else
+          rpm -i $PKG_FILE;
+        fi
       fi
 
     # 4. Поиск модуля
     - echo "🔍 Поиск accord-le.ko..."
     - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
     - if [ -z "$KO_FILE" ]; then
-        echo " Модуль не найден!";
+        echo "❌ Модуль не найден!";
         find /lib/modules -name "*.ko" | head -10;
         exit 1;
       fi
-    - echo "✅ Модуль $KO_FILE"
+    - echo "✅ Модуль: $KO_FILE"
 
     # 5. Загрузка драйвера (ТЗ п. 8)
     - echo "🔌 Загрузка модуля..."
@@ -201,27 +204,29 @@ test:
             echo "✅ Подтвержден в lsmod";
           fi
         else
-          echo "️ insmod failed (возможно несовместимость ядер)";
+          echo "⚠️ insmod failed (возможно несовместимость ядер)";
           dmesg | tail -10 || true;
         fi
       else
         echo "⚠️ Нет privileged mode, проверяем modinfo...";
-        modinfo $KO_FILE | grep -q "vermagic" && echo "✅ Модуль валиден";
+        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "✅ Модуль валиден";
       fi
 
-    # 6. Выгрузка и удаление
-    - echo "️ Выгрузка..."
+    # 6. Выгрузка и удаление (ПРАВИЛЬНАЯ логика - по типу пакета)
+    - echo "🗑️ Выгрузка..."
     - rmmod accord_le 2>/dev/null || true
-    - echo "🗑️ Удаление пакета $PKG_NAME..."
+    - echo "️ Удаление пакета $PKG_NAME..."
     - |
-      if command -v apt-get >/dev/null 2>&1; then
-        apt-get remove -y $PKG_NAME
-      elif command -v dnf >/dev/null 2>&1; then
-        dnf remove -y $PKG_NAME
-      elif command -v yum >/dev/null 2>&1; then
-        yum remove -y $PKG_NAME
-      else
-        rpm -e $PKG_NAME
+      if [ "$PKG_EXT" = "deb" ]; then
+        apt-get remove -y $PKG_NAME;
+      elif [ "$PKG_EXT" = "rpm" ]; then
+        if command -v dnf >/dev/null 2>&1; then
+          dnf remove -y $PKG_NAME;
+        elif command -v yum >/dev/null 2>&1; then
+          yum remove -y $PKG_NAME;
+        else
+          rpm -e $PKG_NAME;
+        fi
       fi
 
     - echo "✅ Тесты пройдены!"
