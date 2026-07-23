@@ -3,11 +3,9 @@ BUILD_NUMBER      ?= 1
 TARGET_ARCH    ?= $(shell uname -m)
 TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null || echo "debian")
 OUTPUT_DIR     ?= $(CURDIR)/../build
-
 KERNEL_RELEASE ?= $(shell uname -r)
 KERNEL_HEADERS ?= /lib/modules/$(KERNEL_RELEASE)/build
 INSTALL_PATH   := $(shell find /lib/modules/${KERNEL_RELEASE} -name accord-le.ko 2>/dev/null)
-
 EXTRA_CFLAGS = -DEXPORT_SYMTAB
 EXTRA_CFLAGS += -I$(src)
 EXTRA_CFLAGS += -Wno-int-to-pointer-cast
@@ -168,9 +166,9 @@ package-rpm:
 		if [ -f $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
 			echo "Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
 		else \
-			echo "RPM пакет не найден"; \
+			echo " RPM пакет не найден"; \
 		fi \
 	else \
-		echo "rpmbuild не установлен. "; \
+		echo "rpmbuild не установлен. Пропускаем RPM."; \
 	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-driver
