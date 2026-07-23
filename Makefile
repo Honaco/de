@@ -100,7 +100,7 @@ ci-package:
 	
 
 ci-test:
-	echo "ci тестирование..."
+	echo "ci тестирование"
 	$(MAKE) -C driver test
 	$(MAKE) -C tools test
 

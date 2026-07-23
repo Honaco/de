@@ -16,12 +16,11 @@ obj-m := accord-le.o
 
 .PHONY: all clean install uninstall package package-tar package-deb package-rpm test
 
-# ===== Сборка модуля =====
 all:
 	@if [ ! -d "$(KERNEL_HEADERS)" ]; then \
-		echo "❌ Заголовки ядра не найдены: $(KERNEL_HEADERS)"; \
-		echo "💡 Установите: sudo apt install linux-headers-$(KERNEL_RELEASE)"; \
-		echo "💡 Или укажите: make build KERNEL_HEADERS=/path/to/headers"; \
+		echo "Заголовки ядра не найдены: $(KERNEL_HEADERS)"; \
+		echo "Установите: sudo apt install linux-headers-$(KERNEL_RELEASE)"; \
+		echo "Или укажите: make build KERNEL_HEADERS=/path/to/headers"; \
 		exit 1; \
 	fi
 	make -r -C $(KERNEL_HEADERS) M=$(shell pwd) modules
