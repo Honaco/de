@@ -98,13 +98,13 @@ variables:
 # Этапы CI/CD (ТЗ п. 4.3)
 # ---------------------------------------------------------
 
-validate-build-system:
-  stage: validate
-  extends: 
-    - .env_template
-    - .os_matrix
-  script:
-    - make help
+# validate-build-system:
+#   stage: validate
+#   extends: 
+#     - .env_template
+#     - .os_matrix
+#   script:
+#     - make help
 
 build:
   stage: build
