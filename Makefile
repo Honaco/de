@@ -85,7 +85,7 @@ ci-build:
 	mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver all
 	$(MAKE) -C tools all
-	find driver -name "accord-le.ko" -exec cp {} $(OUTPUT_DIR)
+	find driver -name "accord-le.ko" -exec cp {} $(OUTPUT_DIR) \;
 	echo " аартефакты собраны в $(OUTPUT_DIR):"
 	ls -lh $(OUTPUT_DIR)
 
@@ -105,8 +105,6 @@ ci-test:
 	$(MAKE) -C tools test
 
 help:
-	@echo "Accord-LE Driver Build System"
-	@echo "=============================="
 	@echo "Цели:"
 	@echo "  build      - Собрать драйвер и утилиты"
 	@echo "  clean      - Очистить артефакты"
@@ -114,17 +112,12 @@ help:
 	@echo "  uninstall  - Удалить из системы"
 	@echo "  package    - Создать пакеты (DEB, RPM, tar.gz)"
 	@echo "  test       - Запустить тесты"
-	@echo ""
 	@echo "CI цели:"
 	@echo "  ci-build   - Сборка для CI"
 	@echo "  ci-package - Упаковка для CI"
 	@echo "  ci-test    - Тестирование для CI"
-	@echo ""
 	@echo "Параметры:"
 	@echo "  KERNEL_HEADERS=/path  - Путь к заголовкам ядра"
 	@echo "  MODULE_VERSION=2.1.0  - Версия модуля"
 	@echo "  BUILD_NUMBER=15          - Номер сборки"
 	@echo "  OUTPUT_DIR=/path      - Директория артефактов"
-	@echo ""
-	@echo "Пример:"
-	@echo "  sudo make build KERNEL_HEADERS=/opt/custom-headers"
