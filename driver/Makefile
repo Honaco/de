@@ -94,8 +94,9 @@ package-deb:
 		cp 99-accord-le.rules $(OUTPUT_DIR)/deb-driver/etc/udev/rules.d/; \
 	fi
 	DEB_ARCH=$$(if [ "$(TARGET_ARCH)" = "x86_64" ]; then echo "amd64"; else echo "$(TARGET_ARCH)"; fi); \
+	DEB_VER=$$(echo $(MODULE_VERSION) | sed 's/-/~/g'); \
 	echo "Package: accord-le-driver" > $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
-	echo "Version: $(MODULE_VERSION)" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
+	echo "Version: $$DEB_VER" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
 	echo "Architecture: $$DEB_ARCH" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
 	echo "Maintainer: OKB SAPR" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
 	echo "Description: Accord-LE Driver for $(TARGET_OS)" >> $(OUTPUT_DIR)/deb-driver/DEBIAN/control; \
@@ -143,7 +144,7 @@ package-rpm:
 	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "%files" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "/lib/modules/$(KERNEL_RELEASE)/extra/accord-le.ko" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
-	echo "/etc/udev/rules.d/99-accord-le.rules" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "/etc/udev/rules.d/99-accord-le.rules" >> $(OUTPUT_DIR)/RPM-driver/SPECS/accord-le.spec; \
 	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "%post" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
@@ -159,12 +160,8 @@ package-rpm:
 		rpmbuild --define "_topdir $(OUTPUT_DIR)/rpm-driver" \
 			--define "_sourcedir $(OUTPUT_DIR)/rpm-driver/SOURCES" \
 			-bb $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
-		find $(OUTPUT_DIR)/rpm-driver/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm \; 2>/dev/null || true; \
-		if [ -f $(OUTPUT_DIR)/accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm ]; then \
-			echo "Создан: accord-le-$(MODULE_VERSION).$(TARGET_ARCH).rpm"; \
-		else \
-			echo " RPM пакет не найден"; \
-		fi \
+		find $(OUTPUT_DIR)/rpm-driver/RPMS -name "*.rpm" -exec cp {} $(OUTPUT_DIR)/ \; ; \
+		echo "RPM пакет успешно создан и скопирован в $(OUTPUT_DIR)"; \
 	else \
 		echo "rpmbuild не установлен. Пропускаем RPM."; \
 	fi

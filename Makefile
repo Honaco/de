@@ -38,12 +38,12 @@ driver:
 	mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver all
 	
-	if [ -f driver/accord-le.ko ]; then 
-		cp driver/accord-le.ko $(OUTPUT_DIR); 
-		echo "драйвер скопирован в $(OUTPUT_DIR)"; 
-	else 
-		echo "driver/accord-le.ko нет"; 
-		exit 1; 
+	if [ -f driver/accord-le.ko ]; then \
+		cp driver/accord-le.ko $(OUTPUT_DIR); \ 
+		echo "драйвер скопирован в $(OUTPUT_DIR)"; \ 
+	else \
+		echo "driver/accord-le.ko нет"; \
+		exit 1; \
 	fi
 
 tools:

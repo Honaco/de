@@ -85,13 +85,13 @@ variables:
       fi
 
 
-# validate-build-system:
-#   stage: validate
-#   extends: 
-#     - .env_template
-#     - .os_matrix
-#   script:
-#     - make help
+validate-build-system:
+  stage: validate
+  extends: 
+    - .env_template
+    - .os_matrix
+  script:
+    - make help
 
 build:
   stage: build
@@ -117,9 +117,8 @@ package:
         echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
         echo "%_allow_root_build 1" >> ~/.rpmmacros; 
       fi
-    - echo "Восстанавливаем accord-le.ko в driver/ для упаковки..."
     - mkdir -p driver
-    - cp -v build/accord-le.ko driver/ 2>/dev/null || echo "⚠️ accord-le.ko не найден в build/"
+    - cp -v build/accord-le.ko driver/ 2>/dev/null || echo "accord-le.ko не найден в build/"
     - make ci-package
   needs:
     - job: build
@@ -136,8 +135,8 @@ test:
     - .os_matrix
   script:
     - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
-    - echo "🔍 Найден пакет $PKG_FILE"
-    - "[ -z \"$PKG_FILE\" ] && echo '❌ Пакет не найден' && exit 1"
+    - echo "Найден пакет $PKG_FILE"
+    - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
     
     - |
       if [ "$PKG_EXT" = "deb" ]; then
@@ -145,15 +144,11 @@ test:
       else
         PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
       fi
-    - echo "📦 Имя пакета $PKG_NAME"
 
-    - echo "📥 Установка пакета..."
     - |
       if [ "$PKG_EXT" = "deb" ]; then
-        echo "Установка DEB пакета...";
         dpkg -i $PKG_FILE || apt-get install -f -y;
       elif [ "$PKG_EXT" = "rpm" ]; then
-        echo "📥 Установка RPM пакета...";
         if command -v dnf >/dev/null 2>&1; then
           dnf localinstall -y $PKG_FILE;
         elif command -v yum >/dev/null 2>&1; then
@@ -163,35 +158,32 @@ test:
         fi
       fi
 
-    - echo "🔍 Поиск accord-le.ko..."
     - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
     - if [ -z "$KO_FILE" ]; then
-        echo "❌ Модуль не найден!";
+        echo "Модуль не найден";
         find /lib/modules -name "*.ko" | head -10;
         exit 1;
       fi
-    - echo "✅ Модуль $KO_FILE"
+    - echo "Модуль $KO_FILE"
 
-    - echo "🔌 Загрузка модуля..."
+    - echo "Загрузка модуля"
     - |
       if [ -w /dev/kmsg ]; then
         if insmod $KO_FILE 2>&1; then
-          echo "✅ Модуль загружен";
+          echo "Модуль загружен";
           if lsmod | grep -q "accord_le"; then
-            echo "✅ Подтвержден в lsmod";
+            echo "Подтвержден в lsmod";
           fi
         else
-          echo "⚠️ insmod failed (возможно несовместимость ядер)";
+          echo " insmod failed ";
           dmesg | tail -10 || true;
         fi
       else
-        echo "⚠️ Нет privileged mode, проверяем modinfo...";
-        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "✅ Модуль валиден";
+        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден";
       fi
 
-    - echo "🗑️ Выгрузка..."
     - rmmod accord_le 2>/dev/null || true
-    - echo "️ Удаление пакета $PKG_NAME..."
+    - echo "️ Удаление пакета $PKG_NAME"
     - |
       if [ "$PKG_EXT" = "deb" ]; then
         apt-get remove -y $PKG_NAME;
@@ -205,7 +197,7 @@ test:
         fi
       fi
 
-    - echo "✅ Тесты пройдены!"
+    - echo "Тесты пройдены"
   needs:
     - job: package
       artifacts: true
@@ -216,7 +208,6 @@ release:
   stage: release
   image: "debian:12"
   script:
-    - echo "Структура артефактов:"
     - ls -R build/packages/
   needs:
     - job: test

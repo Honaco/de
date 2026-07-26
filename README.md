@@ -1,109 +1,60 @@
-## Цели Makefile
+## Локальная сборка
 
-Корневой Makefile реализует следующие цели:
+Корневой `Makefile` управляет сборкой как самого драйвера (`driver/`), так и сопутствующих утилит (`tools/`).
 
-make build - Сборка всего проекта
+### Доступные команды
+Система поддерживает следующие основные цели:
+* make build — компиляция драйвера и утилит.
+* make clean — очистка сборочных директорий и удаление временных файлов.
+* make install — установка драйвера (`accord-le.ko`), правил `udev` и утилит в систему.
+* make uninstall — удаление установленных компонентов из системы.
+* make package — формирование готовых пакетов в форматах `tar.gz`, `RPM` и `DEB`.
+* make test — базовая проверка наличия собранных бинарных файлов и конфигураций.
 
-make package - Упаковка пакетов
+### Переменные окружения Параметры
+Процесс сборки может быть гибко настроен через передачу переменных:
+* KERNEL_HEADERS — Путь к заголовочным файлам ядра. Позволяет собирать модуль для кастомных ядер или при нестандартном расположении исходников.
+* KERNEL_VERSION — Версия целевого ядра.
+* KERNEL_CONFIG — Путь к конфигурации ядра.
+* MODULE_VERSION — Релизная версия модуля (по умолчанию берется из Git тега).
+* BUILD_NUMBER — Номер сборки, используемый при формировании RPM и DEB пакетов.
+* TARGET_OS — Идентификатор целевой ОС (например, `ubuntu`, `astra`, `redos`).
+* TARGET_ARCH — Целевая архитектура (по умолчанию `uname -m`).
+* OUTPUT_DIR — Директория для сохранения готовых артефактов.
 
-make install - Установка в систему
+### Примеры использования
 
-make uninstall - Удаление драйвера и утилит из системы
-
-make test - Тестирование
-
-make clean - Очистка
-
-make help - Вывод справки
-
-
-## Поддерживаемые параметры сборки
-
-Система сборки поддерживает следующие параметры, которые можно передавать через командную строку или задавать в переменных окружения:
-
-| Параметр | Описание | Значение по умолчанию |
-|----------|----------|----------------------|
-| KERNEL_HEADERS | Путь к заголовкам ядра Linux, необходимым для компиляции драйвера | `/lib/modules/$(KERNEL_RELEASE)/build` |
-| KERNEL_VERSION | Версия ядра, для которого собирается драйвер | `$(KERNEL_RELEASE)` (текущееядро) |
-| KERNEL_CONFIG | Путь к конфигурационному файлу ядра | `/boot/config-$(KERNEL_RELEASE)` |
-| MODULE_VERSION | Версия модуля драйвера | `1.0.0 (или из git tag) |
-| BUILD_NUMBER | Номер сборки (инкрементальный) | 1 |
-| OUTPUT_DIR | Директория для размещения артефактов сборки | `$(CURDIR)/build` |
-| TARGET_OS | Целевая операционная система (для упаковки) | Автоопределение из `/etc/os-release` |
-| TARGET_ARCH | Целевая архитектура процессора | `$(uname -m)` |
-
-Примеры использования
-
-Сборка с указанием конкретных заголовков ядра:
-``` make build KERNEL_HEADERS=/usr/src/linux-headers-5.4.0-42-generic ```
-
-Сборка с кастомной версией модуля:
-``` make package MODULE_VERSION=2.1.0 BUILD_NUMBER=15```
-
-Сборка для другой архитектуры:
-``` make build TARGET_ARCH=aarch64 OUTPUT_DIR=/tmp/build-arm64```
-
-
-
-## Поддерживаемые платформы
-
-| ОС | Версии | Формат пакетов |
-|----|--------|----------------|
-| Ubuntu | 20.04, 22.04, 24.04 | DEB |
-| Debian | 11, 12 | DEB |
-| Astra Linux | Убедить (1.6, 1.7) | DEB |
-| ALT Linux | 10, 11 | RPM |
-
-Добавление новой платформы осуществляется декларативно через расширение матрицы сборки в `.gitlab-ci.yml`:
-1. Добавление записи в матрицу сборки:
+Стандартная сборка для текущего ядра:
 ```
+make build
+make package
+```
+
+Сборка для кастомного ядра с указанием версии:
+```
+make build KERNEL_HEADERS=/opt/custom-headers/linux-5.15 MODULE_VERSION=2.1.0 OUTPUT_DIR=/tmp/build
+```
+
+## GitLab CI/CD Pipeline
+
+### Этапы
+1. validate: Валидация сборочного окружения и проверка доступности базовых целей
+2. build: Изолированная компиляция драйвера и утилит для каждой целевой ОС
+3. package: Генерация нативных пакетов (RPM/DEB) и архивов (tar.gz)
+4. test: Установка собранного пакета внутри контейнера, загрузка модуля ядра (insmod), проверка через lsmod и последующее удаление
+5. release: Сохранение готовых и проверенных пакетов в папку релиза
+
+### Инструкция по добавлению новой ОС
+Чтобы добавить новую платформу, нужно внести изменения в файл `.gitlab-ci.yml`, добавив новый блок в раздел `matrix` внутри секции `.os_matrix`.
+
+Пример добавления :
+```yaml
 .os_matrix:
   parallel:
     matrix:
-      # Существующие платформы
-      - OS_NAME: "ubuntu"
-        OS_IMAGE: "ubuntu:22.04"
-        HEADERS_PKG: "linux-headers-generic"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: "build-essential"
-
-      # Новая платформа
       - OS_NAME: "fedora"
-        OS_IMAGE: "fedora:38"
-        HEADERS_PKG: "kernel-devel"
-        PKG_EXT: "rpm"
-        EXTRA_PKGS: "rpm-build gcc make"
+        OS_IMAGE: "fedora:latest"  # Официальный Docker-образ
+        HEADERS_PKG: "kernel-devel"  # Название пакета заголовков ядра в пакетном менеджере dnf
+        PKG_EXT: "rpm"             # Указываем формат пакета 
+        EXTRA_PKGS: "rpm-build gcc gcc-c++ make"  # Доп инструменты для компиляции и сборки 
 ```
-
-2. Настройка менеджера пакетов
-```
-.env_template:
-  before_script:
-    - |
-      if command -v apt-get >/dev/null 2>&1; then
-        apt-get update -yqq
-        apt-get install -yqq build-essential $HEADERS_PKG $EXTRA_PKGS
-      elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y gcc make $HEADERS_PKG $EXTRA_PKGS
-      elif command -v zypper >/dev/null 2>&1; then
-        zypper install -y gcc make $HEADERS_PKG $EXTRA_PKGS
-      fi
-```
-
-3. Настройка установки пакетов в тестах (В секции test добавьте обработку нового формата пакетов:)
-```
-test:
-  script:
-    - |
-      if [ "$PKG_EXT" = "deb" ]; then
-        dpkg -i $PKG_FILE
-        apt-get install -f -y
-      elif [ "$PKG_EXT" = "rpm" ]; then
-        if command -v dnf >/dev/null 2>&1; then
-          dnf localinstall -y $PKG_FILE
-        else
-          rpm -i $PKG_FILE
-        fi
-      fi
-```
-
