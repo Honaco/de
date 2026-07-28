@@ -51,7 +51,7 @@ variables:
         OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
         HEADERS_PKG: "kernel-devel"
         PKG_EXT: "rpm"
-        EXTRA_PKGS: "rpm-build gcc make dpkg"
+        EXTRA_PKGS: "rpm-build gcc make"
 
 .env_template:
   image: $OS_IMAGE
