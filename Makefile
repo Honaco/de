@@ -92,15 +92,26 @@ ci-build:
 ci-package:
 	echo "ci сборка пакетов для $(TARGET_OS)"
 	mkdir -p $(PACKAGES_DIR)/$(TARGET_OS)
-	if [ "$(PKG_EXT)" = "deb" ]; then \
+	
+	@if [ "$(PKG_EXT)" = "deb" ]; then \
+		echo "Сборка DEB пакетов..."; \
 		$(MAKE) -C driver package-deb; \
+		$(MAKE) -C tools package-deb; \
 	elif [ "$(PKG_EXT)" = "rpm" ]; then \
+		echo "Сборка RPM пакетов..."; \
 		$(MAKE) -C driver package-rpm; \
+		$(MAKE) -C tools package-rpm; \
 	else \
+		echo "Сборка всех пакетов по умолчанию..."; \
 		$(MAKE) -C driver package; \
+		$(MAKE) -C tools package; \
 	fi
-	$(MAKE) -C tools package
-	mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/$(TARGET_OS)/ 2>/dev/null
+	
+	@# Также собираем tar.gz, если он нужен везде (или оставьте по необходимости)
+	$(MAKE) -C driver package-tar
+	$(MAKE) -C tools package-tar
+	
+	mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/$(TARGET_OS)/ 2>/dev/null || true
 	echo "пакеты собраны в $(PACKAGES_DIR)/$(TARGET_OS)"
 	ls -lh $(PACKAGES_DIR)/$(TARGET_OS)
 	

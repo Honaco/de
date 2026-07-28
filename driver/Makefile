@@ -83,6 +83,10 @@ package-tar:
 	@echo "Создан: accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz"
 
 package-deb:
+	@if ! command -v dpkg-deb >/dev/null 2>&1; then \
+		echo "dpkg-deb не найден, пропускаем сборку DEB драйвера."; \
+		exit 0; \
+	fi
 	@if [ ! -f accord-le.ko ]; then \
 		echo "accord-le.ko не найден"; \
 		exit 1; \
