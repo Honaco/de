@@ -20,7 +20,6 @@ obj-m := accord-le.o
 
 .PHONY: build clean install uninstall package package-tar package-deb package-rpm test
 
-# Сборка драйвера (ТЗ п. 3.2)
 build:
 	@if [ ! -d "$(KERNEL_HEADERS)" ]; then \
 		echo "[ERROR] Kernel headers not found: $(KERNEL_HEADERS)"; \
@@ -29,15 +28,12 @@ build:
 	@$(MAKE) -r -C $(KERNEL_HEADERS) M=$(CURDIR) modules || { echo "[ERROR] Build failed"; exit 1; }
 	@echo "[OK] accord-le.ko built"
 
-# Очистка
 clean:
 	@$(MAKE) -r -C $(KERNEL_HEADERS) M=$(CURDIR) clean 2>/dev/null || true
 	@rm -f accord-le.ko accord-le.o
 	@rm -f *.mod.* .*.cmd
 	@rm -rf .tmp_versions
 	@rm -f Module.markers Module.symvers modules.order
-
-# Установка (ТЗ п. 3.2)
 install:
 	@if [ ! -f accord-le.ko ]; then \
 		echo "[ERROR] accord-le.ko not found"; \
@@ -51,7 +47,6 @@ install:
 	fi
 	@echo "[OK] Driver installed"
 
-# Удаление (ТЗ п. 3.2)
 uninstall:
 	@if [ -n "$(INSTALL_PATH)" ]; then \
 		rm -f "$(INSTALL_PATH)"; \
@@ -61,7 +56,6 @@ uninstall:
 	@udevadm control --reload-rules
 	@echo "[OK] Driver uninstalled"
 
-# Тестирование (ТЗ п. 3.2, 8)
 test:
 	@if [ -f accord-le.ko ]; then \
 		echo "[OK] accord-le.ko exists"; \
@@ -73,10 +67,8 @@ test:
 	@test -f 99-accord-le.rules && echo "[OK] udev rules found" || echo "[WARN] udev rules missing"
 	@echo "[OK] Driver tests passed"
 
-# Упаковка (ТЗ п. 5)
 package: package-tar package-deb package-rpm
 
-# TAR.GZ (ТЗ п. 6.2)
 package-tar:
 	@if [ ! -f accord-le.ko ]; then \
 		echo "[ERROR] accord-le.ko not found"; \
@@ -89,7 +81,6 @@ package-tar:
 	@rm -rf $(OUTPUT_DIR)/tar
 	@echo "[OK] Created: accord-le-$(MODULE_VERSION)-$(KERNEL_RELEASE).tar.gz"
 
-# DEB (ТЗ п. 6.2)
 package-deb:
 	@if [ ! -f accord-le.ko ]; then \
 		echo "[ERROR] accord-le.ko not found"; \
@@ -110,7 +101,6 @@ package-deb:
 	@rm -rf $(OUTPUT_DIR)/deb-driver
 	@echo "[OK] Created DEB: accord-le_$(MODULE_VERSION)_$$DEB_ARCH.deb"
 
-# RPM (ТЗ п. 6.2, исправлено для RedOS/ALT)
 package-rpm:
 	@if [ ! -f accord-le.ko ]; then \
 		echo "[ERROR] accord-le.ko not found"; \
