@@ -69,9 +69,12 @@ variables:
         apt-get install -yqq build-essential sudo git kmod udev rpm $HEADERS_PKG $EXTRA_PKGS
       elif command -v dnf >/dev/null 2>&1; then
         dnf update -y || true
+        # Пытаемся поставить заголовки строго под текущее ядро uname -r, если не выходит — берем из матрицы ($HEADERS_PKG)
+        dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) $EXTRA_PKGS || \
         dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
       elif command -v yum >/dev/null 2>&1; then
         yum update -y || true
+        yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) $EXTRA_PKGS || \
         yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
       fi
       
