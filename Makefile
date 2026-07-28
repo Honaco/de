@@ -88,10 +88,17 @@ ci-build:
 	echo " аартефакты собраны в $(OUTPUT_DIR):"
 	ls -lh $(OUTPUT_DIR)
 
+
 ci-package:
-	echo " ci cборка пакетов"
+	echo "ci сборка пакетов для $(TARGET_OS)"
 	mkdir -p $(PACKAGES_DIR)/$(TARGET_OS)
-	$(MAKE) -C driver package
+	if [ "$(PKG_EXT)" = "deb" ]; then \
+		$(MAKE) -C driver package-deb; \
+	elif [ "$(PKG_EXT)" = "rpm" ]; then \
+		$(MAKE) -C driver package-rpm; \
+	else \
+		$(MAKE) -C driver package; \
+	fi
 	$(MAKE) -C tools package
 	mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/$(TARGET_OS)/ 2>/dev/null
 	echo "пакеты собраны в $(PACKAGES_DIR)/$(TARGET_OS)"
