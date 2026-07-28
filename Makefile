@@ -90,30 +90,42 @@ ci-build:
 
 
 ci-package:
-	echo "ci сборка пакетов для $(TARGET_OS)"
-	mkdir -p $(PACKAGES_DIR)/$(TARGET_OS)
+	@echo "========================================="
+	@echo "[CI-PACKAGE] TARGET_OS=$(TARGET_OS)"
+	@echo "[CI-PACKAGE] PKG_EXT=$(PKG_EXT)"
+	@echo "========================================="
+	@mkdir -p $(PACKAGES_DIR)/$(TARGET_OS)
 	
-	@if [ "$(PKG_EXT)" = "deb" ]; then \
-		echo "Сборка DEB пакетов..."; \
-		$(MAKE) -C driver package-deb; \
-		$(MAKE) -C tools package-deb; \
-	elif [ "$(PKG_EXT)" = "rpm" ]; then \
-		echo "Сборка RPM пакетов..."; \
-		$(MAKE) -C driver package-rpm; \
-		$(MAKE) -C tools package-rpm; \
+	@# Принудительно вызываем нужные цели в зависимости от PKG_EXT
+	@if [ "$(PKG_EXT)" = "rpm" ]; then \
+		echo "[INFO] Сборка RPM пакетов для $(TARGET_OS)..."; \
+		$(MAKE) -C driver package-rpm || { echo "[ERROR] driver package-rpm failed"; exit 1; }; \
+		$(MAKE) -C tools package-rpm || { echo "[ERROR] tools package-rpm failed"; exit 1; }; \
+	elif [ "$(PKG_EXT)" = "deb" ]; then \
+		echo "[INFO] Сборка DEB пакетов для $(TARGET_OS)..."; \
+		$(MAKE) -C driver package-deb || { echo "[ERROR] driver package-deb failed"; exit 1; }; \
+		$(MAKE) -C tools package-deb || { echo "[ERROR] tools package-deb failed"; exit 1; }; \
 	else \
-		echo "Сборка всех пакетов по умолчанию..."; \
-		$(MAKE) -C driver package; \
-		$(MAKE) -C tools package; \
+		echo "[WARN] PKG_EXT не определен или неизвестен, собираем все форматы..."; \
+		$(MAKE) -C driver package || true; \
+		$(MAKE) -C tools package || true; \
 	fi
 	
-	@# Также собираем tar.gz, если он нужен везде (или оставьте по необходимости)
-	$(MAKE) -C driver package-tar
-	$(MAKE) -C tools package-tar
+	@# Собираем tar.gz для всех платформ
+	@echo "[INFO] Сборка tar.gz архивов..."
+	@$(MAKE) -C driver package-tar || true
+	@$(MAKE) -C tools package-tar || true
 	
-	mv $(OUTPUT_DIR)/*.deb $(OUTPUT_DIR)/*.rpm $(OUTPUT_DIR)/*.tar.gz $(PACKAGES_DIR)/$(TARGET_OS)/ 2>/dev/null || true
-	echo "пакеты собраны в $(PACKAGES_DIR)/$(TARGET_OS)"
-	ls -lh $(PACKAGES_DIR)/$(TARGET_OS)
+	@# Копируем ВСЕ пакеты в директорию артефактов
+	@echo "[INFO] Копирование пакетов в $(PACKAGES_DIR)/$(TARGET_OS)..."
+	@find $(OUTPUT_DIR) -maxdepth 1 -name "*.deb" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \; 2>/dev/null || true
+	@find $(OUTPUT_DIR) -maxdepth 1 -name "*.rpm" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \; 2>/dev/null || true
+	@find $(OUTPUT_DIR) -maxdepth 1 -name "*.tar.gz" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \; 2>/dev/null || true
+	
+	@echo "========================================="
+	@echo "[OK] Пакеты собраны в $(PACKAGES_DIR)/$(TARGET_OS):"
+	@ls -lh $(PACKAGES_DIR)/$(TARGET_OS)/
+	@echo "========================================="
 	
 
 ci-test:
