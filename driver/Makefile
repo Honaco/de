@@ -140,11 +140,11 @@ package-rpm:
 	echo "mkdir -p %{buildroot}/lib/modules/$(KERNEL_RELEASE)/extra" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "mkdir -p %{buildroot}/etc/udev/rules.d" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/accord-le.ko %{buildroot}/lib/modules/$(KERNEL_RELEASE)/extra/" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
-	echo "cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/99-accord-le.rules %{buildroot}/etc/udev/rules.d/ 2>/dev/null || true" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
+	echo "if [ -f %{_sourcedir}/accord-le-$(MODULE_VERSION)/99-accord-le.rules ]; then cp %{_sourcedir}/accord-le-$(MODULE_VERSION)/99-accord-le.rules %{buildroot}/etc/udev/rules.d/; fi" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "%files" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "/lib/modules/$(KERNEL_RELEASE)/extra/accord-le.ko" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
-	echo "/etc/udev/rules.d/99-accord-le.rules" >> $(OUTPUT_DIR)/RPM-driver/SPECS/accord-le.spec; \
+	echo "%config(noreplace) %optional /etc/udev/rules.d/99-accord-le.rules" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "%post" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
 	echo "/sbin/depmod $(KERNEL_RELEASE)" >> $(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec; \
