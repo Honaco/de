@@ -7,6 +7,8 @@ KERNEL_RELEASE ?= $(shell uname -r)
 KERNEL_HEADERS ?= /lib/modules/$(KERNEL_RELEASE)/build
 INSTALL_PATH   := $(shell find /lib/modules/${KERNEL_RELEASE} -name accord-le.ko 2>/dev/null)
 
+RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
+
 EXTRA_CFLAGS = -DEXPORT_SYMTAB
 EXTRA_CFLAGS += -I$(src)
 EXTRA_CFLAGS += -Wno-int-to-pointer-cast
@@ -114,7 +116,7 @@ package-rpm:
 		exit 1; \
 	fi
 	@if ! command -v rpmbuild >/dev/null 2>&1; then \
-		echo "️ rpmbuild не установлен. Пропускаем RPM."; \
+		echo "rpmbuild не установлен. Пропускаем RPM."; \
 		exit 0; \
 	fi
 	@rm -rf $(OUTPUT_DIR)/rpm-driver
@@ -131,7 +133,7 @@ package-rpm:
 	fi
 	@SPEC="$(OUTPUT_DIR)/rpm-driver/SPECS/accord-le.spec"; \
 	echo "Name: accord-le-driver" > $$SPEC; \
-	echo "Version: $(MODULE_VERSION)" >> $$SPEC; \
+	echo "Version: $(RPM_VERSION)" >> $$SPEC; \
 	echo "Release: $(BUILD_NUMBER)%{?dist}" >> $$SPEC; \
 	echo "Summary: Accord-LE Driver" >> $$SPEC; \
 	echo "License: Proprietary" >> $$SPEC; \
