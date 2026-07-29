@@ -102,11 +102,9 @@ build:
     - .os_matrix
   script:
     - make ci-build
-    # Создаём dist с финальными артефактами
     - mkdir -p dist
     - cp -v build/accord-le.ko dist/ 2>/dev/null || true
     - cp -v build/tools/* dist/ 2>/dev/null || true
-    # Создаём ci с метаданными
     - mkdir -p ci
     - echo "BUILD_NUMBER=$BUILD_NUMBER" > ci/build-info.env
     - echo "CI_PIPELINE_ID=$CI_PIPELINE_ID" >> ci/build-info.env
@@ -153,8 +151,6 @@ test:
     - PKG_FILE=$(find packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
     - echo "Найден пакет $PKG_FILE"
     - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
-    
-    # Создаём директорию для тестов
     - mkdir -p tests
     
     - |
@@ -193,7 +189,6 @@ test:
           if lsmod | grep -q "accord_le"; then
             echo "Подтвержден в lsmod";
           fi
-          # Сохраняем результат теста
           echo "TEST_LOAD_MODULE=PASS" > tests/test-results.env
         else
           echo " insmod failed ";
@@ -205,7 +200,6 @@ test:
         echo "TEST_LOAD_MODULE=SKIP (no privileges)" > tests/test-results.env
       fi
 
-    # Сохраняем логи
     - lsmod > tests/lsmod.log 2>/dev/null || true
     - modinfo $KO_FILE > tests/modinfo.log 2>/dev/null || true
     - dmesg | tail -50 > tests/dmesg.log 2>/dev/null || true
@@ -229,7 +223,7 @@ test:
   artifacts:
     paths:
       - tests/
-    when: always  # Сохраняем тесты даже при падении
+    when: always  
   needs:
     - job: package
       artifacts: true
@@ -255,9 +249,12 @@ release:
     - ls -lh ci/ || true
     - cat ci/build-info.env 2>/dev/null || true
   needs:
-    - job: test
+    - job: build
       artifacts: true
     - job: package
       artifacts: true
-    - job: build
+    - job: test
       artifacts: true
+  artifacts:
+    paths:
+      - release-artifacts.tar.gz
