@@ -3,7 +3,8 @@ KERNEL_HEADERS ?= /lib/modules/$(KERNEL_RELEASE)/build
 KERNEL_VERSION ?= $(KERNEL_RELEASE)
 KERNEL_CONFIG  ?= /boot/config-$(KERNEL_RELEASE)
 KERNEL_HEADERS_AVAILABLE := $(shell test -d $(KERNEL_HEADERS) && echo "yes" || echo "no")
-GIT_TAG    := $(shell git describe --tags --abbrev=0)
+GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+
 GIT_HASH   := $(shell git rev-parse --short HEAD)
 BUILD_NUMBER  ?= 1
 RAW_VERSION := $(GIT_TAG)-build$(BUILD_NUMBER)-g$(GIT_HASH)

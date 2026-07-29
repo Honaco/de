@@ -101,11 +101,9 @@ build:
     - .os_matrix
   script:
     - make ci-build
-    - make -C tools all
   artifacts:
     paths:
       - build/
-      - tools/
 
 package:
   stage: package
