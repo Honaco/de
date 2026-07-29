@@ -12,46 +12,11 @@ variables:
 .os_matrix:
   parallel:
     matrix:
-      # - OS_NAME: "ubuntu"
-      #   OS_IMAGE: "ubuntu:20.04"
-      #   HEADERS_PKG: "linux-headers-generic"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
-      # - OS_NAME: "ubuntu"
-      #   OS_IMAGE: "ubuntu:22.04"
-      #   HEADERS_PKG: "linux-headers-generic"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
-      # - OS_NAME: "ubuntu"
-      #   OS_IMAGE: "ubuntu:24.04"
-      #   HEADERS_PKG: "linux-headers-generic"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
-      # - OS_NAME: "debian"
-      #   OS_IMAGE: "debian:11"
-      #   HEADERS_PKG: "linux-headers-amd64"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
       - OS_NAME: "debian"
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
         PKG_EXT: "deb"
         EXTRA_PKGS: ""
-      # - OS_NAME: "astra"
-      #   OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
-      #   HEADERS_PKG: "linux-headers-hardened-amd64"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
-      # - OS_NAME: "alt"
-      #   OS_IMAGE: "alt:p10"
-      #   HEADERS_PKG: "kernel-headers-modules-std-def"
-      #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build dpkg"
-      # - OS_NAME: "redos"
-      #   OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
-      #   HEADERS_PKG: "kernel-devel"
-      #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build gcc make"
 
 .env_template:
   image: $OS_IMAGE
@@ -100,9 +65,11 @@ build:
     - .os_matrix
   script:
     - make ci-build
+    - make -C tools all
   artifacts:
     paths:
       - build/
+      - tools/
 
 package:
   stage: package
@@ -126,7 +93,8 @@ package:
       artifacts: true
   artifacts:
     paths:
-      - build/packages/
+      - packages/
+      - dist/
 
 test:
   stage: test
@@ -137,10 +105,10 @@ test:
     - set -e
     - set -o pipefail
 
-    - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
+    - PKG_FILE=$(find packages/$OS_NAME -name "accord-le_*.$PKG_EXT" | head -n 1)
     - |
       if [ -z "$PKG_FILE" ]; then
-        echo "Пакет не найден"
+        echo "Пакет драйвера не найден"
         exit 1
       fi
 
@@ -212,7 +180,8 @@ release:
   stage: release
   image: "debian:12"
   script:
-    - ls -R build/packages/
+    - ls -R packages/
+    - ls -R dist/
   needs:
     - job: test
     - job: package
