@@ -137,71 +137,70 @@ test:
     - .env_template
     - .os_matrix
   script:
-    - make ci-test
-    # - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
-    # - echo "Найден пакет $PKG_FILE"
-    # - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
+    - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
+    - echo "Найден пакет $PKG_FILE"
+    - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
     
-    # - |
-    #   if [ "$PKG_EXT" = "deb" ]; then
-    #     PKG_NAME=$(dpkg-deb -f $PKG_FILE Package)
-    #   else
-    #     PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
-    #   fi
+    - |
+      if [ "$PKG_EXT" = "deb" ]; then
+        PKG_NAME=$(dpkg-deb -f $PKG_FILE Package)
+      else
+        PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
+      fi
 
-    # - |
-    #   if [ "$PKG_EXT" = "deb" ]; then
-    #     dpkg -i $PKG_FILE || apt-get install -f -y;
-    #   elif [ "$PKG_EXT" = "rpm" ]; then
-    #     if command -v dnf >/dev/null 2>&1; then
-    #       dnf localinstall -y $PKG_FILE;
-    #     elif command -v yum >/dev/null 2>&1; then
-    #       yum localinstall -y $PKG_FILE;
-    #     else
-    #       rpm -i $PKG_FILE;
-    #     fi
-    #   fi
+    - |
+      if [ "$PKG_EXT" = "deb" ]; then
+        dpkg -i $PKG_FILE || apt-get install -f -y;
+      elif [ "$PKG_EXT" = "rpm" ]; then
+        if command -v dnf >/dev/null 2>&1; then
+          dnf localinstall -y $PKG_FILE;
+        elif command -v yum >/dev/null 2>&1; then
+          yum localinstall -y $PKG_FILE;
+        else
+          rpm -i $PKG_FILE;
+        fi
+      fi
 
-    # - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
-    # - if [ -z "$KO_FILE" ]; then
-    #     echo "Модуль не найден";
-    #     find /lib/modules -name "*.ko" | head -10;
-    #     exit 1;
-    #   fi
-    # - echo "Модуль $KO_FILE"
+    - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
+    - if [ -z "$KO_FILE" ]; then
+        echo "Модуль не найден";
+        find /lib/modules -name "*.ko" | head -10;
+        exit 1;
+      fi
+    - echo "Модуль $KO_FILE"
 
-    # - echo "Загрузка модуля"
-    # - |
-    #   if [ -w /dev/kmsg ]; then
-    #     if insmod $KO_FILE 2>&1; then
-    #       echo "Модуль загружен";
-    #       if lsmod | grep -q "accord_le"; then
-    #         echo "Подтвержден в lsmod";
-    #       fi
-    #     else
-    #       echo " insmod failed ";
-    #       dmesg | tail -10 || true;
-    #     fi
-    #   else
-    #     modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден";
-    #   fi
+    - echo "Загрузка модуля"
+    - |
+      if [ -w /dev/kmsg ]; then
+        if insmod $KO_FILE 2>&1; then
+          echo "Модуль загружен";
+          if lsmod | grep -q "accord_le"; then
+            echo "Подтвержден в lsmod";
+          fi
+        else
+          echo " insmod failed ";
+          dmesg | tail -10 || true;
+        fi
+      else
+        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден";
+      fi
 
-    # - rmmod accord_le 2>/dev/null || true
-    # - echo "️ Удаление пакета $PKG_NAME"
-    # - |
-    #   if [ "$PKG_EXT" = "deb" ]; then
-    #     apt-get remove -y $PKG_NAME;
-    #   elif [ "$PKG_EXT" = "rpm" ]; then
-    #     if command -v dnf >/dev/null 2>&1; then
-    #       dnf remove -y $PKG_NAME;
-    #     elif command -v yum >/dev/null 2>&1; then
-    #       yum remove -y $PKG_NAME;
-    #     else
-    #       rpm -e $PKG_NAME;
-    #     fi
-    #   fi
+    - rmmod accord_le 2>/dev/null || true
+    - echo "️ Удаление пакета $PKG_NAME"
+    - |
+      if [ "$PKG_EXT" = "deb" ]; then
+        apt-get remove -y $PKG_NAME;
+      elif [ "$PKG_EXT" = "rpm" ]; then
+        if command -v dnf >/dev/null 2>&1; then
+          dnf remove -y $PKG_NAME;
+        elif command -v yum >/dev/null 2>&1; then
+          yum remove -y $PKG_NAME;
+        else
+          rpm -e $PKG_NAME;
+        fi
+      fi
 
-    # - echo "Тесты пройдены"
+    - echo "Тесты пройдены"
   needs:
     - job: package
       artifacts: true

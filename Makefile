@@ -128,31 +128,6 @@ ci-package:
 	@echo "========================================="
 	
 
-ci-test:
-	@echo "=== Запуск CI тестов для $(TARGET_OS) ==="
-	@# 1. Ищем пакет
-	@PKG_FILE=$$(find $(PACKAGES_DIR)/$(TARGET_OS) -name "*.$(PKG_EXT)" | grep -iv "tools" | head -n 1); \
-	if [ -z "$$PKG_FILE" ]; then echo "Пакет не найден"; exit 1; fi; \
-	echo "Найден пакет: $$PKG_FILE"; \
-	# 2. Устанавливаем (пример для deb)
-	if [ "$(PKG_EXT)" = "deb" ]; then \
-		dpkg -i $$PKG_FILE || apt-get install -f -y; \
-	elif [ "$(PKG_EXT)" = "rpm" ]; then \
-		rpm -i $$PKG_FILE; \
-	fi; \
-	# 3. Проверяем модуль
-	KO_FILE=$$(find /lib/modules -name "accord-le.ko" | head -n 1); \
-	if [ -z "$$KO_FILE" ]; then echo "Модуль не установлен"; exit 1; fi; \
-	# 4. Пытаемся загрузить
-	if insmod $$KO_FILE 2>/dev/null; then \
-		echo "Модуль загружен"; rmmod accord_le; \
-	else \
-		echo "insmod не удался (нет прав), проверяем modinfo"; modinfo $$KO_FILE; \
-	fi; \
-	# 5. Удаляем
-	if [ "$(PKG_EXT)" = "deb" ]; then apt-get remove -y accord-le-driver; fi
-	@echo "=== CI тесты пройдены ==="
-
 	
 help:
 	@echo "Цели:"
