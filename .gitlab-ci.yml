@@ -53,6 +53,7 @@ variables:
       #   PKG_EXT: "rpm"
       #   EXTRA_PKGS: "rpm-build gcc make"
 
+
 .env_template:
   image: $OS_IMAGE
   before_script:
@@ -69,7 +70,6 @@ variables:
         apt-get install -yqq build-essential sudo git kmod udev rpm $HEADERS_PKG $EXTRA_PKGS
       elif command -v dnf >/dev/null 2>&1; then
         dnf update -y || true
-        # Пытаемся поставить заголовки строго под текущее ядро uname -r, если не выходит — берем из матрицы ($HEADERS_PKG)
         dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) $EXTRA_PKGS || \
         dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
       elif command -v yum >/dev/null 2>&1; then
@@ -87,7 +87,6 @@ variables:
         export KERNEL_HEADERS=$(find /usr/src -maxdepth 1 -type d -name "linux-headers-*" 2>/dev/null | grep -v "common" | head -n 1)
       fi
 
-
 validate-build-system:
   stage: validate
   extends: 
@@ -103,9 +102,24 @@ build:
     - .os_matrix
   script:
     - make ci-build
+    # Создаём dist с финальными артефактами
+    - mkdir -p dist
+    - cp -v build/accord-le.ko dist/ 2>/dev/null || true
+    - cp -v build/tools/* dist/ 2>/dev/null || true
+    # Создаём ci с метаданными
+    - mkdir -p ci
+    - echo "BUILD_NUMBER=$BUILD_NUMBER" > ci/build-info.env
+    - echo "CI_PIPELINE_ID=$CI_PIPELINE_ID" >> ci/build-info.env
+    - echo "CI_COMMIT_SHA=$CI_COMMIT_SHA" >> ci/build-info.env
+    - echo "CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH" >> ci/build-info.env
+    - echo "TARGET_OS=$OS_NAME" >> ci/build-info.env
+    - echo "TARGET_ARCH=$TARGET_ARCH" >> ci/build-info.env
+    - git describe --tags --always > ci/version.txt 2>/dev/null || echo "unknown" > ci/version.txt
   artifacts:
     paths:
       - build/
+      - dist/
+      - ci/
 
 package:
   stage: package
@@ -128,8 +142,7 @@ package:
       artifacts: true
   artifacts:
     paths:
-      - build/packages/
-
+      - packages/
 
 test:
   stage: test
@@ -137,9 +150,12 @@ test:
     - .env_template
     - .os_matrix
   script:
-    - PKG_FILE=$(find build/packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
+    - PKG_FILE=$(find packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
     - echo "Найден пакет $PKG_FILE"
     - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
+    
+    # Создаём директорию для тестов
+    - mkdir -p tests
     
     - |
       if [ "$PKG_EXT" = "deb" ]; then
@@ -177,13 +193,22 @@ test:
           if lsmod | grep -q "accord_le"; then
             echo "Подтвержден в lsmod";
           fi
+          # Сохраняем результат теста
+          echo "TEST_LOAD_MODULE=PASS" > tests/test-results.env
         else
           echo " insmod failed ";
           dmesg | tail -10 || true;
+          echo "TEST_LOAD_MODULE=FAIL" > tests/test-results.env
         fi
       else
         modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден";
+        echo "TEST_LOAD_MODULE=SKIP (no privileges)" > tests/test-results.env
       fi
+
+    # Сохраняем логи
+    - lsmod > tests/lsmod.log 2>/dev/null || true
+    - modinfo $KO_FILE > tests/modinfo.log 2>/dev/null || true
+    - dmesg | tail -50 > tests/dmesg.log 2>/dev/null || true
 
     - rmmod accord_le 2>/dev/null || true
     - echo "️ Удаление пакета $PKG_NAME"
@@ -201,18 +226,38 @@ test:
       fi
 
     - echo "Тесты пройдены"
+  artifacts:
+    paths:
+      - tests/
+    when: always  # Сохраняем тесты даже при падении
   needs:
     - job: package
       artifacts: true
-
-
 
 release:
   stage: release
   image: "debian:12"
   script:
-    - ls -R build/packages/
+    - echo "=== Структура артефактов ==="
+    - echo "build/:"
+    - ls -lh build/ || true
+    - echo ""
+    - echo "dist/:"
+    - ls -lh dist/ || true
+    - echo ""
+    - echo "packages/:"
+    - ls -lR packages/ || true
+    - echo ""
+    - echo "tests/:"
+    - ls -lh tests/ || true
+    - echo ""
+    - echo "ci/:"
+    - ls -lh ci/ || true
+    - cat ci/build-info.env 2>/dev/null || true
   needs:
     - job: test
+      artifacts: true
     - job: package
+      artifacts: true
+    - job: build
       artifacts: true
