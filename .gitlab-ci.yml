@@ -248,6 +248,7 @@ release:
     - echo "ci/:"
     - ls -lh ci/ || true
     - cat ci/build-info.env 2>/dev/null || true
+    - tar -czvf release-artifacts.tar.gz build/ dist/ packages/ tests/ ci/
   needs:
     - job: build
       artifacts: true
