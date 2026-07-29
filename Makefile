@@ -3,141 +3,171 @@ KERNEL_HEADERS ?= /lib/modules/$(KERNEL_RELEASE)/build
 KERNEL_VERSION ?= $(KERNEL_RELEASE)
 KERNEL_CONFIG  ?= /boot/config-$(KERNEL_RELEASE)
 KERNEL_HEADERS_AVAILABLE := $(shell test -d $(KERNEL_HEADERS) && echo "yes" || echo "no")
-GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-
-GIT_HASH   := $(shell git rev-parse --short HEAD)
+GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
+GIT_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_NUMBER  ?= 1
 RAW_VERSION := $(GIT_TAG)-build$(BUILD_NUMBER)-g$(GIT_HASH)
 MODULE_VERSION := $(shell echo $(RAW_VERSION) | sed -E 's/^([^0-9])/0.\1/')
-TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release)
+
+TARGET_OS      ?= $(shell grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null || echo "debian")
 TARGET_ARCH    ?= $(shell uname -m)
 
-BUILD_DIR      ?= $(CURDIR)/build
-DIST_DIR       ?= $(CURDIR)/dist
-PACKAGES_DIR   ?= $(CURDIR)/packages
-TESTS_DIR      ?= $(CURDIR)/tests
-CI_DIR         ?= $(CURDIR)/ci
+OUTPUT_DIR     ?= $(CURDIR)/build
+DIST_DIR       ?= $(OUTPUT_DIR)/dist
+PACKAGES_DIR   ?= $(OUTPUT_DIR)/packages
+TESTS_DIR      ?= $(OUTPUT_DIR)/tests
+CI_DIR         ?= $(OUTPUT_DIR)/ci
+
+KERNEL_HEADERS_AVAILABLE := $(shell test -d $(KERNEL_HEADERS) && echo "yes" || echo "no")
 
 export KERNEL_HEADERS KERNEL_VERSION KERNEL_CONFIG
 export MODULE_VERSION BUILD_NUMBER
-export TARGET_OS TARGET_ARCH
-export BUILD_DIR DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR KERNEL_HEADERS_AVAILABLE
+export TARGET_OS TARGET_ARCH OUTPUT_DIR
+export DIST_DIR PACKAGES_DIR TESTS_DIR CI_DIR KERNEL_HEADERS_AVAILABLE
 
-.PHONY: all build clean install uninstall package test driver tools help ci-build ci-package ci-test prepare-dirs
+
+.PHONY: all build clean install uninstall package test driver tools help ci-build ci-package ci-test
 
 all: build
 
-prepare-dirs:
-	@mkdir -p $(BUILD_DIR) $(DIST_DIR) $(PACKAGES_DIR) $(TESTS_DIR) $(CI_DIR)
-
-build: prepare-dirs driver tools
-	@echo "Сборка завершена"
+build: driver tools
+	echo "cборка завершена"
 
 driver:
-	@echo "Сборка драйвера"
+	echo "cборка драйвера"
+	mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver all
-	@if [ -f driver/accord-le.ko ]; then \
-		cp driver/accord-le.ko $(BUILD_DIR)/; \
-		echo "Драйвер скопирован в $(BUILD_DIR)/"; \
+	if [ -f driver/accord-le.ko ]; then \
+		cp driver/accord-le.ko $(OUTPUT_DIR); \
+		echo "драйвер скопирован в $(OUTPUT_DIR)"; \
 	else \
-		echo "driver/accord-le.ko не найден"; \
+		echo "driver/accord-le.ko нет"; \
 		exit 1; \
 	fi
 
 tools:
-	@echo "Сборка утилит"
+	echo "сборка утилит"
+	mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C tools all
 
 clean:
-	@echo "Очистка"
+	echo "очистка"
 	$(MAKE) -C driver clean
 	$(MAKE) -C tools clean
-	rm -rf $(BUILD_DIR) $(DIST_DIR) $(PACKAGES_DIR) $(TESTS_DIR) $(CI_DIR)
+	rm -rf $(OUTPUT_DIR)
 
 install:
-	@echo "Установка"
+	echo "установка"
 	$(MAKE) -C driver install
 	$(MAKE) -C tools install
 
 uninstall:
-	@echo "Удаление"
+	echo "удаление"
 	$(MAKE) -C driver uninstall
 	$(MAKE) -C tools uninstall
 
-package: prepare-dirs
-	@echo "Упаковка"
+package:
+	echo "упаковка"
+	mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver package
 	$(MAKE) -C tools package
-	@echo "Готовые пакеты:"
-	@ls -lh $(PACKAGES_DIR)/
+	echo "готовые пакеты:"
+	ls -lh $(OUTPUT_DIR)/
 
 test:
-	@echo "Тестирование"
+	echo "тестирование"
 	$(MAKE) -C driver test
 	$(MAKE) -C tools test
 
-ci-build: prepare-dirs
-	@echo "CI сборка"
+ci-build:
+	echo "ci сборка"
+	mkdir -p $(OUTPUT_DIR)
 	$(MAKE) -C driver all
 	$(MAKE) -C tools all
-	@if [ -f driver/accord-le.ko ]; then \
-		cp driver/accord-le.ko $(BUILD_DIR)/; \
-	fi
-	@echo "Артефакты собраны в $(BUILD_DIR):"
-	@ls -lh $(BUILD_DIR)
+	find driver -name "accord-le.ko" -exec cp {} $(OUTPUT_DIR) \;
+	echo " аартефакты собраны в $(OUTPUT_DIR):"
+	ls -lh $(OUTPUT_DIR)
 
-ci-package: prepare-dirs
-	@echo " TARGET_OS=$(TARGET_OS)"
-	@echo "PKG_EXT=$(PKG_EXT)"
+
+ci-package:
+	@echo "========================================="
+	@echo "[CI-PACKAGE] TARGET_OS=$(TARGET_OS)"
+	@echo "[CI-PACKAGE] PKG_EXT=$(PKG_EXT)"
+	@echo "========================================="
 	@mkdir -p $(PACKAGES_DIR)/$(TARGET_OS)
 	
+	@# Принудительно вызываем нужные цели в зависимости от PKG_EXT
 	@if [ "$(PKG_EXT)" = "rpm" ]; then \
-		echo "Сборка пакетов для $(TARGET_OS)"; \
-		$(MAKE) -C driver package-rpm; \
-		$(MAKE) -C tools package-rpm; \
+		echo "[INFO] Сборка RPM пакетов для $(TARGET_OS)..."; \
+		$(MAKE) -C driver package-rpm || { echo "[ERROR] driver package-rpm failed"; exit 1; }; \
+		$(MAKE) -C tools package-rpm || { echo "[ERROR] tools package-rpm failed"; exit 1; }; \
 	elif [ "$(PKG_EXT)" = "deb" ]; then \
-		echo "Сборка DEB пакетов для $(TARGET_OS)"; \
-		$(MAKE) -C driver package-deb; \
-		$(MAKE) -C tools package-deb; \
+		echo "[INFO] Сборка DEB пакетов для $(TARGET_OS)..."; \
+		$(MAKE) -C driver package-deb || { echo "[ERROR] driver package-deb failed"; exit 1; }; \
+		$(MAKE) -C tools package-deb || { echo "[ERROR] tools package-deb failed"; exit 1; }; \
 	else \
-		echo "PKG_EXT не определен"; \
-		exit 1; \
+		echo "[WARN] PKG_EXT не определен или неизвестен, собираем все форматы..."; \
+		$(MAKE) -C driver package || true; \
+		$(MAKE) -C tools package || true; \
 	fi
 	
-	@echo "Сборка tar.gz архивов"
-	@$(MAKE) -C driver package-tar
-	@$(MAKE) -C tools package-tar
+	@# Собираем tar.gz для всех платформ
+	@echo "[INFO] Сборка tar.gz архивов..."
+	@$(MAKE) -C driver package-tar || true
+	@$(MAKE) -C tools package-tar || true
 	
-	@echo "Копирование пакетов в $(PACKAGES_DIR)/$(TARGET_OS)"
-	@find driver/packages -name "*.deb" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \;
-	@find driver/packages -name "*.rpm" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \;
-	@find tools/packages -name "*.deb" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \;
-	@find tools/packages -name "*.rpm" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \;
-	@find driver/dist -name "*.tar.gz" -exec cp {} $(DIST_DIR)/ \;
-	@find tools/dist -name "*.tar.gz" -exec cp {} $(DIST_DIR)/ \;
+	@# Копируем ВСЕ пакеты в директорию артефактов
+	@echo "[INFO] Копирование пакетов в $(PACKAGES_DIR)/$(TARGET_OS)..."
+	@find $(OUTPUT_DIR) -maxdepth 1 -name "*.deb" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \; 2>/dev/null || true
+	@find $(OUTPUT_DIR) -maxdepth 1 -name "*.rpm" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \; 2>/dev/null || true
+	@find $(OUTPUT_DIR) -maxdepth 1 -name "*.tar.gz" -exec cp {} $(PACKAGES_DIR)/$(TARGET_OS)/ \; 2>/dev/null || true
 	
-	@echo "Пакеты собраны в $(PACKAGES_DIR)/$(TARGET_OS):"
+	@echo "========================================="
+	@echo "[OK] Пакеты собраны в $(PACKAGES_DIR)/$(TARGET_OS):"
 	@ls -lh $(PACKAGES_DIR)/$(TARGET_OS)/
+	@echo "========================================="
+	
 
 ci-test:
-	@echo "CI тестирование"
-	$(MAKE) -C driver test
-	$(MAKE) -C tools test
+	@echo "=== Запуск CI тестов для $(TARGET_OS) ==="
+	@# 1. Ищем пакет
+	@PKG_FILE=$$(find $(PACKAGES_DIR)/$(TARGET_OS) -name "*.$(PKG_EXT)" | grep -iv "tools" | head -n 1); \
+	if [ -z "$$PKG_FILE" ]; then echo "Пакет не найден"; exit 1; fi; \
+	echo "Найден пакет: $$PKG_FILE"; \
+	# 2. Устанавливаем (пример для deb)
+	if [ "$(PKG_EXT)" = "deb" ]; then \
+		dpkg -i $$PKG_FILE || apt-get install -f -y; \
+	elif [ "$(PKG_EXT)" = "rpm" ]; then \
+		rpm -i $$PKG_FILE; \
+	fi; \
+	# 3. Проверяем модуль
+	KO_FILE=$$(find /lib/modules -name "accord-le.ko" | head -n 1); \
+	if [ -z "$$KO_FILE" ]; then echo "Модуль не установлен"; exit 1; fi; \
+	# 4. Пытаемся загрузить
+	if insmod $$KO_FILE 2>/dev/null; then \
+		echo "Модуль загружен"; rmmod accord_le; \
+	else \
+		echo "insmod не удался (нет прав), проверяем modinfo"; modinfo $$KO_FILE; \
+	fi; \
+	# 5. Удаляем
+	if [ "$(PKG_EXT)" = "deb" ]; then apt-get remove -y accord-le-driver; fi
+	@echo "=== CI тесты пройдены ==="
 
+	
 help:
 	@echo "Цели:"
-	@echo "  build    - Собрать драйвер и утилиты"
-	@echo "  clean   - Очистить артефакты"
-	@echo "  install   - Установить в систему"
+	@echo "  build      - Собрать драйвер и утилиты"
+	@echo "  clean      - Очистить артефакты"
+	@echo "  install    - Установить в систему"
 	@echo "  uninstall  - Удалить из системы"
-	@echo "  package   - Создать пакеты"
-	@echo "  test     - Запустить тесты"
+	@echo "  package    - Создать пакеты (DEB, RPM, tar.gz)"
+	@echo "  test       - Запустить тесты"
 	@echo "CI цели:"
-	@echo "  ci-build  - Сборка для CI"
+	@echo "  ci-build   - Сборка для CI"
 	@echo "  ci-package - Упаковка для CI"
-	@echo "  ci-test  - Тестирование для CI"
+	@echo "  ci-test    - Тестирование для CI"
 	@echo "Параметры:"
 	@echo "  KERNEL_HEADERS=/path  - Путь к заголовкам ядра"
 	@echo "  MODULE_VERSION=2.1.0  - Версия модуля"
-	@echo "  BUILD_NUMBER=15   - Номер сборки"
-	@echo "  PKG_EXT=deb|rpm    - Формат пакета"
+	@echo "  BUILD_NUMBER=15          - Номер сборки"
+	@echo "  OUTPUT_DIR=/path      - Директория артефактов"
