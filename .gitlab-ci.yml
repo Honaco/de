@@ -51,7 +51,7 @@ variables:
       #   OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
       #   HEADERS_PKG: "kernel-devel"
       #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build "
+      #   EXTRA_PKGS: "rpm-build gcc "
 
 
 .env_template:
@@ -113,7 +113,7 @@ build:
     - echo "CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH" >> ci/build-info.env
     - echo "TARGET_OS=$OS_NAME" >> ci/build-info.env
     - echo "TARGET_ARCH=$TARGET_ARCH" >> ci/build-info.env
-    - git describe --tags --always > ci/version.txt 2>/dev/null || echo "unknown" > ci/version.txt
+    - git describe --tags --always > ci/version.txt 2>/dev/null 
   artifacts:
     paths:
       - build/
@@ -134,7 +134,7 @@ package:
         echo "%_allow_root_build 1" >> ~/.rpmmacros; 
       fi
     - mkdir -p driver
-    - cp -v build/accord-le.ko driver/ 2>/dev/null || echo "accord-le.ko не найден в build/"
+    - cp -v build/accord-le.ko driver/ 
     - make ci-package
   needs:
     - job: build
