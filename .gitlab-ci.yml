@@ -36,6 +36,7 @@ variables:
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
         PKG_EXT: "deb"
+        EXTRA_PKGS: ""
       # - OS_NAME: "astra"
       #   OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
       #   HEADERS_PKG: "linux-headers-hardened-amd64"
@@ -50,7 +51,7 @@ variables:
       #   OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
       #   HEADERS_PKG: "kernel-devel"
       #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build gcc make"
+      #   EXTRA_PKGS: "rpm-build "
 
 
 .env_template:
@@ -233,20 +234,20 @@ release:
   image: "debian:12"
   script:
     - echo "build/:"
-    - ls -lh build/ || true
+    - ls -lh build/
     - echo ""
     - echo "dist/:"
-    - ls -lh dist/ || true
+    - ls -lh dist/ 
     - echo ""
     - echo "packages/:"
-    - ls -lR packages/ || true
+    - ls -lR packages/ 
     - echo ""
     - echo "tests/:"
-    - ls -lh tests/ || true
+    - ls -lh tests/
     - echo ""
     - echo "ci/:"
-    - ls -lh ci/ || true
-    - cat ci/build-info.env 2>/dev/null || true
+    - ls -lh ci/ 
+    - cat ci/build-info.env 
   needs:
     - job: build
       artifacts: true
