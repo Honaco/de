@@ -86,7 +86,7 @@ variables:
         export KERNEL_HEADERS=$(find /usr/src -maxdepth 1 -type d -name "linux-headers-*" 2>/dev/null | grep -v "common" | head -n 1)
       fi
 
-validate-build-system:
+validate:
   stage: validate
   extends: 
     - .env_template
@@ -247,7 +247,6 @@ release:
     - echo "ci/:"
     - ls -lh ci/ || true
     - cat ci/build-info.env 2>/dev/null || true
-    - tar -czvf release-artifacts.tar.gz build/ dist/ packages/ tests/ ci/
   needs:
     - job: build
       artifacts: true
@@ -257,4 +256,8 @@ release:
       artifacts: true
   artifacts:
     paths:
-      - release-artifacts.tar.gz
+      - build/
+      - dist/
+      - packages/
+      - tests/
+      - ci/
