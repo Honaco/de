@@ -105,7 +105,7 @@ build:
     - mkdir -p dist
 
     - cp -v build/accord-le.ko dist/ 
-    - cp -v build/tools/accord-tools-bin.ko dist/
+    - cp -v build/acle-tools-bin.tar.gz dist/
     - mkdir -p ci
     - echo "BUILD_NUMBER=$BUILD_NUMBER" > ci/build-info.env
     - echo "CI_PIPELINE_ID=$CI_PIPELINE_ID" >> ci/build-info.env
@@ -224,7 +224,6 @@ test:
   artifacts:
     paths:
       - tests/
-    when: always  
   needs:
     - job: package
       artifacts: true
