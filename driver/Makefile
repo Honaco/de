@@ -12,6 +12,7 @@ RPM_VERSION    := $(shell echo $(MODULE_VERSION) | sed 's/-/_/g')
 EXTRA_CFLAGS = -DEXPORT_SYMTAB
 EXTRA_CFLAGS += -I$(src)
 EXTRA_CFLAGS += -Wno-int-to-pointer-cast
+EXTRA_CFLAGS += -DDRIVER_VERSION=\"$(MODULE_VERSION)"
 
 obj-m := accord-le.o
 
