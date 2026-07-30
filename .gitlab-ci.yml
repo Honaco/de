@@ -36,7 +36,6 @@ variables:
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
         PKG_EXT: "deb"
-        EXTRA_PKGS: ""
       # - OS_NAME: "astra"
       #   OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
       #   HEADERS_PKG: "linux-headers-hardened-amd64"
@@ -46,7 +45,7 @@ variables:
       #   OS_IMAGE: "alt:p10"
       #   HEADERS_PKG: "kernel-headers-modules-std-def"
       #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build dpkg"
+      #   EXTRA_PKGS: "rpm-build"
       # - OS_NAME: "redos"
       #   OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
       #   HEADERS_PKG: "kernel-devel"
@@ -103,8 +102,9 @@ build:
   script:
     - make ci-build
     - mkdir -p dist
-    - cp -v build/accord-le.ko dist/ 2>/dev/null || true
-    - cp -v build/tools/* dist/ 2>/dev/null || true
+
+    - cp -v build/accord-le.ko dist/ 
+    - cp -v build/tools/accord-tools-bin.ko dist/
     - mkdir -p ci
     - echo "BUILD_NUMBER=$BUILD_NUMBER" > ci/build-info.env
     - echo "CI_PIPELINE_ID=$CI_PIPELINE_ID" >> ci/build-info.env
@@ -232,7 +232,6 @@ release:
   stage: release
   image: "debian:12"
   script:
-    - echo "=== Структура артефактов ==="
     - echo "build/:"
     - ls -lh build/ || true
     - echo ""
