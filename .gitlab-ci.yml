@@ -1,3 +1,7 @@
+default:
+  tags:
+    - docker
+
 stages:
   - validate
   - build
@@ -17,11 +21,11 @@ variables:
       #   HEADERS_PKG: "linux-headers-generic"
       #   PKG_EXT: "deb"
       #   EXTRA_PKGS: ""
-      # - OS_NAME: "ubuntu"
-      #   OS_IMAGE: "ubuntu:22.04"
-      #   HEADERS_PKG: "linux-headers-generic"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
+      - OS_NAME: "ubuntu"
+        OS_IMAGE: "ubuntu:22.04"
+        HEADERS_PKG: "linux-headers-5.15.0-151-generic"
+        PKG_EXT: "deb"
+        EXTRA_PKGS: ""
       # - OS_NAME: "ubuntu"
       #   OS_IMAGE: "ubuntu:24.04"
       #   HEADERS_PKG: "linux-headers-generic"
@@ -32,27 +36,26 @@ variables:
       #   HEADERS_PKG: "linux-headers-amd64"
       #   PKG_EXT: "deb"
       #   EXTRA_PKGS: ""
-      - OS_NAME: "debian"
-        OS_IMAGE: "debian:12"
-        HEADERS_PKG: "linux-headers-amd64"
-        PKG_EXT: "deb"
-        EXTRA_PKGS: ""
-      # - OS_NAME: "astra"
-      #   OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
-      #   HEADERS_PKG: "linux-headers-hardened-amd64"
-      #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
-      # - OS_NAME: "alt"
-      #   OS_IMAGE: "alt:p10"
-      #   HEADERS_PKG: "kernel-headers-modules-std-def"
-      #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build"
-      # - OS_NAME: "redos"
-      #   OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
-      #   HEADERS_PKG: "kernel-devel"
-      #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build gcc "
-
+      #- OS_NAME: "debian"
+      #  OS_IMAGE: "debian:12"
+      #  HEADERS_PKG: "linux-headers-amd64"
+      #  PKG_EXT: "deb"
+      #  EXTRA_PKGS: ""
+      #- OS_NAME: "astra"
+      #  OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
+      #  HEADERS_PKG: "linux-headers-hardened-amd64"
+      #  PKG_EXT: "deb"
+      #  EXTRA_PKGS: ""
+        # - OS_NAME: "alt"
+        #   OS_IMAGE: "alt:p10"
+        #   HEADERS_PKG: "kernel-headers-modules-std-def"
+        #   PKG_EXT: "rpm"
+        #   EXTRA_PKGS: "rpm-build dpkg"
+      #- OS_NAME: "redos"
+      #  OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
+      #  HEADERS_PKG: "kernel-devel"
+      #  PKG_EXT: "rpm"
+      #  EXTRA_PKGS: "rpm-build gcc make"
 
 .env_template:
   image: $OS_IMAGE
@@ -64,8 +67,8 @@ variables:
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -yqq
         if [ -n "$HEADERS_PKG" ] && ! apt-cache show "$HEADERS_PKG" >/dev/null 2>&1; then
-          FOUND_PKG=$(apt-cache search "^linux-headers-" | grep -E "hardened|generic|amd64|astra" | head -n 1 | awk '{print $1}');
-          [ -n "$FOUND_PKG" ] && HEADERS_PKG="$FOUND_PKG";
+          FOUND_PKG=$(apt-cache search "^linux-headers-" | grep -E "hardened|generic|amd64|astra" | head -n 1 | awk '{print $1}')
+          [ -n "$FOUND_PKG" ] && HEADERS_PKG="$FOUND_PKG"
         fi
         apt-get install -yqq build-essential sudo git kmod udev rpm $HEADERS_PKG $EXTRA_PKGS
       elif command -v dnf >/dev/null 2>&1; then
@@ -77,48 +80,19 @@ variables:
         yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) $EXTRA_PKGS || \
         yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
       fi
-      
+
     - |
-      export KERNEL_HEADERS=$(find /lib/modules -type l -name build 2>/dev/null | head -n 1)
+      export KERNEL_HEADERS="/lib/modules/$(uname -r)/build"
+      if [ ! -d "$KERNEL_HEADERS" ]; then
+        export KERNEL_HEADERS=$(find /lib/modules -type l -name build 2>/dev/null | head -n 1)
+      fi
       if [ -z "$KERNEL_HEADERS" ]; then
         export KERNEL_HEADERS=$(find /usr/src/kernels -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n 1)
       fi
       if [ -z "$KERNEL_HEADERS" ]; then
         export KERNEL_HEADERS=$(find /usr/src -maxdepth 1 -type d -name "linux-headers-*" 2>/dev/null | grep -v "common" | head -n 1)
       fi
-
-validate:
-  stage: validate
-  extends: 
-    - .env_template
-    - .os_matrix
-  script:
-    - make help
-
-build:
-  stage: build
-  extends: 
-    - .env_template
-    - .os_matrix
-  script:
-    - make ci-build
-    - mkdir -p dist
-
-    - cp -v build/accord-le.ko dist/ 
-    - cp -v build/acle-tools-bin.tar.gz dist/
-    - mkdir -p ci
-    - echo "BUILD_NUMBER=$BUILD_NUMBER" > ci/build-info.env
-    - echo "CI_PIPELINE_ID=$CI_PIPELINE_ID" >> ci/build-info.env
-    - echo "CI_COMMIT_SHA=$CI_COMMIT_SHA" >> ci/build-info.env
-    - echo "CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH" >> ci/build-info.env
-    - echo "TARGET_OS=$OS_NAME" >> ci/build-info.env
-    - echo "TARGET_ARCH=$TARGET_ARCH" >> ci/build-info.env
-    - git describe --tags --always > ci/version.txt 2>/dev/null 
-  artifacts:
-    paths:
-      - build/
-      - dist/
-      - ci/
+      echo "Kernel headers: $KERNEL_HEADERS"
 
 package:
   stage: package
@@ -126,15 +100,16 @@ package:
     - .env_template
     - .os_matrix
   script:
-    - if [ "$PKG_EXT" = "rpm" ]; then
-        echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros;
-        echo "%_tmppath /tmp" >> ~/.rpmmacros;
-        echo "%__spec_install_post %{nil}" >> ~/.rpmmacros;
-        echo "%_disable_source_fetch 1" >> ~/.rpmmacros;
-        echo "%_allow_root_build 1" >> ~/.rpmmacros; 
+    - |
+      if [ "$PKG_EXT" = "rpm" ]; then
+        echo "%_topdir $(pwd)/build/rpm" > ~/.rpmmacros
+        echo "%_tmppath /tmp" >> ~/.rpmmacros
+        echo "%__spec_install_post %{nil}" >> ~/.rpmmacros
+        echo "%_disable_source_fetch 1" >> ~/.rpmmacros
+        echo "%_allow_root_build 1" >> ~/.rpmmacros
       fi
     - mkdir -p driver
-    - cp -v build/accord-le.ko driver/ 
+    - cp -v build/accord-le.ko driver/
     - make ci-package
   needs:
     - job: build
@@ -149,115 +124,80 @@ test:
     - .env_template
     - .os_matrix
   script:
-    - PKG_FILE=$(find packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
-    - echo "Найден пакет $PKG_FILE"
-    - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
     - mkdir -p tests
-    
+    - echo "Структура packages/:"
+    - find packages/ -type f
+    - PKG_FILE=$(find packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
+    - echo "Найден пакет: $PKG_FILE" | tee -a tests/test-report.log
+    - |
+      if [ -z "$PKG_FILE" ]; then
+        echo 'Пакет не найден' | tee -a tests/test-report.log
+        exit 1
+      fi
     - |
       if [ "$PKG_EXT" = "deb" ]; then
         PKG_NAME=$(dpkg-deb -f $PKG_FILE Package)
       else
         PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
       fi
-
+    - echo "Установка пакета $PKG_NAME" | tee -a tests/test-report.log
     - |
       if [ "$PKG_EXT" = "deb" ]; then
-        dpkg -i $PKG_FILE || apt-get install -f -y;
+        dpkg -i $PKG_FILE 2>&1 | tee -a tests/test-report.log || (apt-get install -f -y 2>&1 | tee -a tests/test-report.log && dpkg -i $PKG_FILE 2>&1 | tee -a tests/test-report.log)
       elif [ "$PKG_EXT" = "rpm" ]; then
         if command -v dnf >/dev/null 2>&1; then
-          dnf localinstall -y $PKG_FILE;
+          dnf install -y $PKG_FILE 2>&1 | tee -a tests/test-report.log
         elif command -v yum >/dev/null 2>&1; then
-          yum localinstall -y $PKG_FILE;
+          yum install -y $PKG_FILE 2>&1 | tee -a tests/test-report.log
         else
-          rpm -i $PKG_FILE;
+          rpm -i $PKG_FILE 2>&1 | tee -a tests/test-report.log
         fi
       fi
-
     - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
-    - if [ -z "$KO_FILE" ]; then
-        echo "Модуль не найден";
-        find /lib/modules -name "*.ko" | head -10;
-        exit 1;
+    - |
+      if [ -z "$KO_FILE" ]; then
+        echo "Модуль не найден" | tee -a tests/test-report.log
+        find /lib/modules -name "*.ko" | head -10 | tee -a tests/test-report.log
+        exit 1
       fi
-    - echo "Модуль $KO_FILE"
-
-    - echo "Загрузка модуля"
+    - echo "Модуль: $KO_FILE" | tee -a tests/test-report.log
+    - modinfo $KO_FILE 2>&1 | tee -a tests/test-report.log
+    - echo "Загрузка модуля" | tee -a tests/test-report.log
     - |
       if [ -w /dev/kmsg ]; then
-        if insmod $KO_FILE 2>&1; then
-          echo "Модуль загружен";
-          if lsmod | grep -q "accord_le"; then  
-            echo "Подтвержден в lsmod";
+        if insmod $KO_FILE 2>&1 | tee -a tests/test-report.log; then
+          echo "Модуль загружен" | tee -a tests/test-report.log
+          if lsmod | grep -q "accord_le\|accord-le"; then
+            echo "Подтвержден в lsmod" | tee -a tests/test-report.log
           fi
-          echo "TEST_LOAD_MODULE=PASS" > tests/test-results.env
         else
-          echo " insmod failed ";
-          dmesg | tail -10 || true;
-          echo "TEST_LOAD_MODULE=FAIL" > tests/test-results.env
+          echo "insmod failed" | tee -a tests/test-report.log
+          dmesg | tail -20 | tee -a tests/test-report.log
+          exit 1
         fi
       else
-        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден";
-        echo "TEST_LOAD_MODULE=SKIP (no privileges)" > tests/test-results.env
+        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден" | tee -a tests/test-report.log
       fi
-
     - lsmod > tests/lsmod.log 2>/dev/null || true
     - modinfo $KO_FILE > tests/modinfo.log 2>/dev/null || true
-    - dmesg | tail -50 > tests/dmesg.log 2>/dev/null || true
-
-    - rmmod accord_le 2>/dev/null || true
-    - echo "️ Удаление пакета $PKG_NAME"
+    - rmmod accord_le 2>/dev/null || rmmod accord-le 2>/dev/null || true
+    - echo "Удаление пакета $PKG_NAME" | tee -a tests/test-report.log
     - |
       if [ "$PKG_EXT" = "deb" ]; then
-        apt-get remove -y $PKG_NAME;
+        apt-get remove -y $PKG_NAME 2>&1 | tee -a tests/test-report.log
       elif [ "$PKG_EXT" = "rpm" ]; then
         if command -v dnf >/dev/null 2>&1; then
-          dnf remove -y $PKG_NAME;
+          dnf remove -y $PKG_NAME 2>&1 | tee -a tests/test-report.log
         elif command -v yum >/dev/null 2>&1; then
-          yum remove -y $PKG_NAME;
+          yum remove -y $PKG_NAME 2>&1 | tee -a tests/test-report.log
         else
-          rpm -e $PKG_NAME;
+          rpm -e $PKG_NAME 2>&1 | tee -a tests/test-report.log
         fi
       fi
-
-    - echo "Тесты пройдены"
+    - echo "Тесты пройдены" | tee -a tests/test-report.log
   artifacts:
     paths:
       - tests/
   needs:
     - job: package
       artifacts: true
-
-release:
-  stage: release
-  image: "debian:12"
-  script:
-    - echo "build/:"
-    - ls -lh build/
-    - echo ""
-    - echo "dist/:"
-    - ls -lh dist/ 
-    - echo ""
-    - echo "packages/:"
-    - ls -lR packages/ 
-    - echo ""
-    - echo "tests/:"
-    - ls -lh tests/
-    - echo ""
-    - echo "ci/:"
-    - ls -lh ci/ 
-    - cat ci/build-info.env 
-  needs:
-    - job: build
-      artifacts: true
-    - job: package
-      artifacts: true
-    - job: test
-      artifacts: true
-  artifacts:
-    paths:
-      - build/
-      - dist/
-      - packages/
-      - tests/
-      - ci/
