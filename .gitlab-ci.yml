@@ -1,5 +1,4 @@
 stages:
-  - validate
   - build
   - package
   - test
