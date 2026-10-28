@@ -54,12 +54,13 @@ variables:
     - |
       if command -v apt-get >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive
-        apt-get update -yqq
+        rm -rf /var/lib/apt/lists/*
+        apt-get update -y
         if [ -n "$HEADERS_PKG" ] && ! apt-cache show "$HEADERS_PKG" >/dev/null 2>&1; then
           FOUND_PKG=$(apt-cache search "^linux-headers-" | grep -E "hardened|generic|amd64|astra" | head -n 1 | awk '{print $1}');
           [ -n "$FOUND_PKG" ] && HEADERS_PKG="$FOUND_PKG";
         fi
-        apt-get install -yqq build-essential sudo git kmod udev rpm $HEADERS_PKG
+        apt-get install -y --fix-missing build-essential sudo git kmod udev rpm "$HEADERS_PKG"
       elif command -v dnf >/dev/null 2>&1; then
         dnf update -y || true
         dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) || \
