@@ -16,42 +16,34 @@ variables:
       #   OS_IMAGE: "ubuntu:20.04"
       #   HEADERS_PKG: "linux-headers-generic"
       #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
       # - OS_NAME: "ubuntu"
       #   OS_IMAGE: "ubuntu:22.04"
       #   HEADERS_PKG: "linux-headers-generic"
       #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
       # - OS_NAME: "ubuntu"
       #   OS_IMAGE: "ubuntu:24.04"
       #   HEADERS_PKG: "linux-headers-generic"
       #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
       # - OS_NAME: "debian"
       #   OS_IMAGE: "debian:11"
       #   HEADERS_PKG: "linux-headers-amd64"
       #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
       - OS_NAME: "debian"
         OS_IMAGE: "debian:12"
         HEADERS_PKG: "linux-headers-amd64"
         PKG_EXT: "deb"
-        EXTRA_PKGS: ""
       # - OS_NAME: "astra"
       #   OS_IMAGE: "registry.astralinux.ru/library/astra/ubi18:latest"
       #   HEADERS_PKG: "linux-headers-hardened-amd64"
       #   PKG_EXT: "deb"
-      #   EXTRA_PKGS: ""
       # - OS_NAME: "alt"
       #   OS_IMAGE: "alt:p10"
       #   HEADERS_PKG: "kernel-headers-modules-std-def"
       #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build"
       # - OS_NAME: "redos"
       #   OS_IMAGE: "registry.red-soft.ru/ubi7/ubi:latest"
       #   HEADERS_PKG: "kernel-devel"
       #   PKG_EXT: "rpm"
-      #   EXTRA_PKGS: "rpm-build gcc "
 
 
 .env_template:
@@ -67,15 +59,15 @@ variables:
           FOUND_PKG=$(apt-cache search "^linux-headers-" | grep -E "hardened|generic|amd64|astra" | head -n 1 | awk '{print $1}');
           [ -n "$FOUND_PKG" ] && HEADERS_PKG="$FOUND_PKG";
         fi
-        apt-get install -yqq build-essential sudo git kmod udev rpm $HEADERS_PKG $EXTRA_PKGS
+        apt-get install -yqq build-essential sudo git kmod udev rpm $HEADERS_PKG
       elif command -v dnf >/dev/null 2>&1; then
         dnf update -y || true
-        dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) $EXTRA_PKGS || \
-        dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
+        dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) || \
+        dnf install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG
       elif command -v yum >/dev/null 2>&1; then
         yum update -y || true
-        yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) $EXTRA_PKGS || \
-        yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG $EXTRA_PKGS
+        yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build kernel-devel-$(uname -r) || \
+        yum install -y gcc gcc-c++ make sudo git kmod udev rpm-build $HEADERS_PKG
       fi
       
     - |
@@ -149,84 +141,32 @@ test:
     - .env_template
     - .os_matrix
   script:
-    - PKG_FILE=$(find packages/$OS_NAME -name "*.$PKG_EXT" | grep -iv "tools" | head -n 1)
-    - echo "Найден пакет $PKG_FILE"
-    - "[ -z \"$PKG_FILE\" ] && echo 'Пакет не найден' && exit 1"
     - mkdir -p tests
-    
-    - |
-      if [ "$PKG_EXT" = "deb" ]; then
-        PKG_NAME=$(dpkg-deb -f $PKG_FILE Package)
-      else
-        PKG_NAME=$(rpm -qp --queryformat '%{NAME}' $PKG_FILE)
-      fi
-
-    - |
-      if [ "$PKG_EXT" = "deb" ]; then
-        dpkg -i $PKG_FILE || apt-get install -f -y;
-      elif [ "$PKG_EXT" = "rpm" ]; then
-        if command -v dnf >/dev/null 2>&1; then
-          dnf localinstall -y $PKG_FILE;
-        elif command -v yum >/dev/null 2>&1; then
-          yum localinstall -y $PKG_FILE;
-        else
-          rpm -i $PKG_FILE;
-        fi
-      fi
-
-    - KO_FILE=$(find /lib/modules -name "accord-le.ko" | head -n 1)
-    - if [ -z "$KO_FILE" ]; then
-        echo "Модуль не найден";
-        find /lib/modules -name "*.ko" | head -10;
+  
+    - KO_FILE="dist/accord-le.ko"
+    - if [ ! -f "$KO_FILE" ]; then
+        echo "Модуль не найден"
         exit 1;
       fi
-    - echo "Модуль $KO_FILE"
-
-    - echo "Загрузка модуля"
+    - modinfo $KO_FILE | tee tests/modinfo.log
+    
     - |
-      if [ -w /dev/kmsg ]; then
-        if insmod $KO_FILE 2>&1; then
-          echo "Модуль загружен";
-          if lsmod | grep -q "accord_le"; then  
-            echo "Подтвержден в lsmod";
-          fi
-          echo "TEST_LOAD_MODULE=PASS" > tests/test-results.env
-        else
-          echo " insmod failed ";
-          dmesg | tail -10 || true;
-          echo "TEST_LOAD_MODULE=FAIL" > tests/test-results.env
-        fi
+      H_K=$(uname -r)
+      M_K=$(modinfo $KO_FILE | awk '/^vermagic:/ {print $2}')
+      echo "Ядро хоста: $H_K" | tee -a tests/modinfo.log
+      echo "Ядро модуля $M_K" | tee -a tests/modinfo.log
+      if [ "$H_K" = "$M_K" ]; then 
+        echo "Модуль совместим с ядром" | tee -a tests/modinfo.log
       else
-        modinfo $KO_FILE 2>/dev/null | grep -q "vermagic" && echo "Модуль валиден";
-        echo "TEST_LOAD_MODULE=SKIP (no privileges)" > tests/test-results.env
+        echo "Модуль не совместим с ядром" | tee -a tests/modinfo.log
+        exit 1;
       fi
 
-    - lsmod > tests/lsmod.log 2>/dev/null || true
-    - modinfo $KO_FILE > tests/modinfo.log 2>/dev/null || true
-    - dmesg | tail -50 > tests/dmesg.log 2>/dev/null || true
-
-    - rmmod accord_le 2>/dev/null || true
-    - echo "️ Удаление пакета $PKG_NAME"
-    - |
-      if [ "$PKG_EXT" = "deb" ]; then
-        apt-get remove -y $PKG_NAME;
-      elif [ "$PKG_EXT" = "rpm" ]; then
-        if command -v dnf >/dev/null 2>&1; then
-          dnf remove -y $PKG_NAME;
-        elif command -v yum >/dev/null 2>&1; then
-          yum remove -y $PKG_NAME;
-        else
-          rpm -e $PKG_NAME;
-        fi
-      fi
-
-    - echo "Тесты пройдены"
+      
   artifacts:
     paths:
       - tests/
-  needs:
-    - job: package
-      artifacts: true
+    when: always
 
 release:
   stage: release

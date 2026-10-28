@@ -57,7 +57,6 @@ make build KERNEL_HEADERS=/opt/custom-headers/linux-5.15 MODULE_VERSION=2.1.0 OU
     matrix:
       - OS_NAME: "fedora"
         OS_IMAGE: "fedora:latest"  # Docker-образ
-        HEADERS_PKG: "kernel-devel"  # Название пакета заголовков ядра в пакетном менеджере dnf
+        HEADERS_PKG: "kernel-devel"  # Название пакета заголовков ядра 
         PKG_EXT: "rpm"             # Указываем формат пакета 
-        EXTRA_PKGS: "rpm-build"  # Доп инструменты для компиляции и сборки 
 ```
